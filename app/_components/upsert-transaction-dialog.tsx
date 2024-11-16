@@ -40,12 +40,13 @@ import {
 } from "@prisma/client";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { addTransaction } from "../_actions/add-transaction";
+import { upsertTransaction } from "../_actions/add-transaction";
 
 interface UpsertTransactionDialogProps {
   IsOpen: boolean;
-  setIsOpen: (IsOpen: boolean) => void;
   defaultValues?: FormSchema;
+  transactionId?: string;
+  setIsOpen: (IsOpen: boolean) => void;
 }
 
 const formSchema = z.object({
@@ -77,8 +78,9 @@ type FormSchema = z.infer<typeof formSchema>;
 
 const UpsertTransactionDialog = ({
   IsOpen,
-  setIsOpen,
   defaultValues,
+  transactionId,
+  setIsOpen,
 }: UpsertTransactionDialogProps) => {
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
@@ -94,13 +96,15 @@ const UpsertTransactionDialog = ({
 
   const onSubmit = async (data: FormSchema) => {
     try {
-      await addTransaction(data);
+      await upsertTransaction({ ...data, id: transactionId });
       setIsOpen(false);
       form.reset();
     } catch (error) {
       console.error(error);
     }
   };
+
+  const isUpdate = Boolean(transactionId);
 
   return (
     <Dialog
@@ -115,7 +119,10 @@ const UpsertTransactionDialog = ({
       <DialogTrigger asChild></DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle> Adicionar transação </DialogTitle>
+          <DialogTitle>
+            {" "}
+            {isUpdate ? "Atualizar" : "Criar"} transação{" "}
+          </DialogTitle>
           <DialogDescription> Insira as informações abaixo </DialogDescription>
         </DialogHeader>
 
@@ -258,7 +265,10 @@ const UpsertTransactionDialog = ({
                   Cancelar
                 </Button>
               </DialogClose>
-              <Button type="submit"> Adicionar </Button>
+              <Button type="submit">
+                {" "}
+                {isUpdate ? "Atualizar" : "Adicionar"}{" "}
+              </Button>
             </DialogFooter>
           </form>
         </Form>
