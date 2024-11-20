@@ -1,4 +1,4 @@
-"use cliente";
+"use client";
 
 import { Button } from "@/app/_components/ui/button";
 import {
@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/app/_components/ui/dialog";
-import { BotIcon } from "lucide-react";
+import { BotIcon, Loader2Icon } from "lucide-react";
 import { generateAiReport } from "../_actions/generat-ai-report";
 import { useState } from "react";
 import { ScrollArea } from "@/app/_components/ui/scroll-area";
@@ -23,24 +23,33 @@ interface AiReportButtonProps {
 
 const AiReportButton = ({ month }: AiReportButtonProps) => {
   const [report, setReport] = useState<string | null>(null);
+  const [reportIsLoanding, setReportIsLoading] = useState(false);
   const handleGenerateAiReportClick = async () => {
     try {
+      setReportIsLoading(true);
       const aiReport = await generateAiReport({ month });
       setReport(aiReport);
     } catch (error) {
       console.error(error);
     }
+    setReportIsLoading(false);
   };
 
   return (
-    <Dialog>
+    <Dialog
+      onOpenChange={(open) => {
+        if (!open) {
+          setReport(null);
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button variant="ghost">
           Relatório IA
           <BotIcon />
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Relatório IA</DialogTitle>
           <DialogDescription>
@@ -48,14 +57,20 @@ const AiReportButton = ({ month }: AiReportButtonProps) => {
             sobre suas finanças.
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="prose max-h[420x] prose-h3:text-wh prose-n4:text-white prose-strong:text-white text-white">
+        <ScrollArea className="max-h[420x] prose-h3:text-wh prose-n4:text-white prose text-white prose-strong:text-white">
           <Markdown>{report}</Markdown>
         </ScrollArea>
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="ghost">Cancelar</Button>
           </DialogClose>
-          <Button onClick={handleGenerateAiReportClick}>Gerar Relatório</Button>
+          <Button
+            onClick={handleGenerateAiReportClick}
+            disabled={reportIsLoanding}
+          >
+            {reportIsLoanding && <Loader2Icon className="animate-spin" />}
+            Gerar Relatório
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
