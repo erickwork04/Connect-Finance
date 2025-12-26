@@ -41,6 +41,9 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { upsertTransaction } from "../_actions/add-transaction";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 interface UpsertTransactionDialogProps {
   IsOpen: boolean;
@@ -82,6 +85,7 @@ const UpsertTransactionDialog = ({
   transactionId,
   setIsOpen,
 }: UpsertTransactionDialogProps) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: defaultValues ?? {
@@ -96,11 +100,15 @@ const UpsertTransactionDialog = ({
 
   const onSubmit = async (data: FormSchema) => {
     try {
+      setIsSubmitting(true);
       await upsertTransaction({ ...data, id: transactionId });
+      toast.success("Transação salva com sucesso!");
       setIsOpen(false);
       form.reset();
     } catch (error) {
-      console.error(error);
+      toast.error("Ocorreu um erro ao salvar a transação.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -265,9 +273,17 @@ const UpsertTransactionDialog = ({
                   Cancelar
                 </Button>
               </DialogClose>
-              <Button type="submit">
-                {" "}
-                {isUpdate ? "Atualizar" : "Adicionar"}{" "}
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Salvando...
+                  </>
+                ) : isUpdate ? (
+                  "Atualizar"
+                ) : (
+                  "Adicionar"
+                )}
               </Button>
             </DialogFooter>
           </form>
