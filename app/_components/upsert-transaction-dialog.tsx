@@ -106,6 +106,7 @@ const UpsertTransactionDialog = ({
       setIsOpen(false);
       form.reset();
     } catch (error) {
+      console.error("Erro ao salvar transação:", error);
       toast.error("Ocorreu um erro ao salvar a transação.");
     } finally {
       setIsSubmitting(false);
