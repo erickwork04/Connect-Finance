@@ -36,4 +36,4 @@ yarn-error.log*
 next-env.d.ts
 
 # docker
-.postgres-data
+.postgres-data.env
