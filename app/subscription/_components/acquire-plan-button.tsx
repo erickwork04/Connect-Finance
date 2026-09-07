@@ -6,7 +6,7 @@ import { loadStripe } from "@stripe/stripe-js";
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
 
-const AcquirePlanButton = () => {
+const AcquirePlanButtonClerk = () => {
   const { user } = useUser();
   const handleAcquirePlanClick = async () => {
     const { sessionId } = await createStripeCheckout();
@@ -21,12 +21,12 @@ const AcquirePlanButton = () => {
     }
     await stripe.redirectToCheckout({ sessionId });
   };
-  const hasPremiumPlan = user?.publicMetadata.subscriptionPlan === "premium";
+  const hasPremiumPlan = user?.publicMetadata?.subscriptionPlan === "premium";
   if (hasPremiumPlan) {
     return (
       <Button className="w-full rounded-full font-bold" variant="link">
         <Link
-          href={`${process.env.NEXT_PUBLIC_STRIPE_CUSTOMER_PORTAL_URL as string}?prefilled_email=${user.emailAddresses[0].emailAddress}`}
+          href={`${(process.env.NEXT_PUBLIC_STRIPE_CUSTOMER_PORTAL_URL as string) || "#"}?prefilled_email=${user?.emailAddresses?.[0]?.emailAddress || ""}`}
         >
           Gerenciar plano
         </Link>
@@ -38,9 +38,21 @@ const AcquirePlanButton = () => {
       className="w-full rounded-full font-bold"
       onClick={handleAcquirePlanClick}
     >
-      Adquerir plano
+      Adquirir plano
     </Button>
   );
+};
+
+const AcquirePlanButton = () => {
+  const hasClerkKey = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+  if (!hasClerkKey) {
+    return (
+      <Button className="w-full rounded-full font-bold" variant="secondary" disabled>
+        Plano Premium Demo Ativo
+      </Button>
+    );
+  }
+  return <AcquirePlanButtonClerk />;
 };
 
 export default AcquirePlanButton;

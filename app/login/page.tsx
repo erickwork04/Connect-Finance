@@ -2,12 +2,14 @@ import Image from "next/image";
 import { Button } from "../_components/ui/button";
 import { LogInIcon } from "lucide-react";
 import { SignInButton } from "@clerk/nextjs";
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { getAuthUserId, isClerkConfigured } from "../_lib/auth";
+import Link from "next/link";
 
 const LoginPage = async () => {
-  const { userId } = await auth ();
-  if (userId) {
+  const userId = await getAuthUserId();
+  const hasClerk = isClerkConfigured();
+  if (hasClerk && userId && userId !== "demo_user") {
     redirect("/");
   }
   return (
@@ -27,12 +29,21 @@ const LoginPage = async () => {
           monitorar suas movimentações, e oferecer insights personalizados,
           facilitando o controle do seu orçamento.
         </p>
-        <SignInButton>
-          <Button variant="outline">
-            <LogInIcon className="m-2" />
-            Fazer Login ou criar conta
+        {hasClerk ? (
+          <SignInButton>
+            <Button variant="outline">
+              <LogInIcon className="m-2" />
+              Fazer Login ou criar conta
+            </Button>
+          </SignInButton>
+        ) : (
+          <Button variant="default" asChild>
+            <Link href="/">
+              <LogInIcon className="m-2" />
+              Acessar Painel
+            </Link>
           </Button>
-        </SignInButton>
+        )}
       </div>
 
       {/*DIREITA*/}

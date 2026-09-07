@@ -1,64 +1,82 @@
 import { clerkClient } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
+import { isClerkConfigured } from "../../../_lib/auth";
+
+export const dynamic = "force-dynamic";
 
 export const POST = async (request: Request) => {
   if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
-    return NextResponse.error();
+    return NextResponse.json({ error: "Missing stripe keys" }, { status: 400 });
   }
   const signature = request.headers.get("stripe-signature");
   if (!signature) {
-    return NextResponse.error();
+    return NextResponse.json({ error: "Missing stripe signature" }, { status: 400 });
   }
-  const text = await request.text();
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: "2024-10-28.acacia",
-  });
-  const event = stripe.webhooks.constructEvent(
-    text,
-    signature,
-    process.env.STRIPE_WEBHOOK_SECRET,
-  );
+  try {
+    const text = await request.text();
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: "2024-10-28.acacia" as unknown as Stripe.LatestApiVersion,
+    });
+    const event = stripe.webhooks.constructEvent(
+      text,
+      signature,
+      process.env.STRIPE_WEBHOOK_SECRET,
+    );
 
-  switch (event.type) {
-    case "invoice.paid": {
-      // Atualizar o usuario com seu novo plano
-      const { customer, subscription, subscription_details } =
-        event.data.object;
-      const clerkUserId = subscription_details?.metadata?.clerk_user_id;
-      if (!clerkUserId) {
-        return NextResponse.error();
+    switch (event.type) {
+      case "invoice.paid": {
+        const { customer, subscription, subscription_details } =
+          event.data.object as unknown as {
+            customer: string;
+            subscription: string;
+            subscription_details?: { metadata?: { clerk_user_id?: string } };
+          };
+        const clerkUserId = subscription_details?.metadata?.clerk_user_id;
+        if (!clerkUserId) {
+          return NextResponse.json({ error: "No clerk user id" }, { status: 400 });
+        }
+        if (isClerkConfigured()) {
+          const client = await clerkClient();
+          await client.users.updateUser(clerkUserId, {
+            privateMetadata: {
+              stripeCustomerId: customer,
+              stripeSubscription: subscription,
+            },
+            publicMetadata: {
+              subscriptionPlan: "premium",
+            },
+          });
+        }
+        break;
       }
-      await clerkClient().users.updateUser(clerkUserId, {
-        privateMetadata: {
-          stripeCustomerId: customer,
-          stripeSubscription: subscription,
-        },
-        publicMetadata: {
-          subscriptionPlan: "premium",
-        },
-      });
-      break;
-    }
-    case "customer.subscription.deleted": {
-      // remover o plano do usuário
-      const subscription = await stripe.subscriptions.retrieve(
-        event.data.object.id,
-      );
-      const clerkUserId = subscription.metadata.clerk_user_id;
-      if (!clerkUserId) {
-        return NextResponse.error();
+      case "customer.subscription.deleted": {
+        const subObj = event.data.object as { id: string };
+        const subscription = await stripe.subscriptions.retrieve(subObj.id);
+        const clerkUserId = subscription.metadata?.clerk_user_id;
+        if (!clerkUserId) {
+          return NextResponse.json({ error: "No clerk user id" }, { status: 400 });
+        }
+        if (isClerkConfigured()) {
+          const client = await clerkClient();
+          await client.users.updateUser(clerkUserId, {
+            privateMetadata: {
+              stripeCustomerId: null,
+              stripeSubscriptionId: null,
+            },
+            publicMetadata: {
+              subscriptionPlan: null,
+            },
+          });
+        }
+        break;
       }
-      await clerkClient().users.updateUser(clerkUserId, {
-        privateMetadata: {
-          stripeCustomerId: null,
-          stripeSubscriptionId: null,
-        },
-        publicMetadata: {
-          subscriptionPlan: null,
-        },
-      });
     }
+    return NextResponse.json({ received: true });
+  } catch (error) {
+    return NextResponse.json(
+      { error: (error as Error).message },
+      { status: 500 },
+    );
   }
-  return NextResponse.json({ received: true });
 };

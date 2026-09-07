@@ -1,30 +1,30 @@
 import { redirect } from "next/navigation";
 import Navbar from "../_components/navbar";
-import { auth, clerkClient } from "@clerk/nextjs/server";
 import { Card, CardContent, CardHeader } from "../_components/ui/card";
 import { CheckIcon, XIcon } from "lucide-react";
 
 import AcquirePlanButton from "./_components/acquire-plan-button";
 import { Badge } from "../_components/ui/badge";
 import { getCurrentMonthTransactions } from "../_data/get-dashboard/get-current-month-transactions";
+import { getAuthUserId, getClerkUser } from "../_lib/auth";
 
 const SubscriptionPage = async () => {
-  const { userId } = await auth();
+  const userId = await getAuthUserId();
   if (!userId) {
     redirect("/login");
   }
-  const user = await clerkClient().users.getUser(userId);
+  const user = await getClerkUser(userId);
   const currentMonthTransactions = await getCurrentMonthTransactions();
-  const hasPremiumPlan = user.publicMetadata.subscriptionPlan === "premium";
+  const hasPremiumPlan = user.publicMetadata?.subscriptionPlan === "premium";
   return (
     <>
       <Navbar />
-      <div className="space-y-6 p-6">
-        <h1 className="text-2xl font-bold">Assinatura</h1>
+      <div className="space-y-4 sm:space-y-6 p-4 sm:p-6 max-w-7xl mx-auto w-full">
+        <h1 className="text-xl sm:text-2xl font-bold">Assinatura</h1>
 
-        <div className="flex gap-6">
-          <Card className="w-[450px]">
-            <CardHeader className="border-b border-solid py-8">
+        <div className="flex flex-col md:flex-row gap-4 sm:gap-6">
+          <Card className="w-full md:w-[450px]">
+            <CardHeader className="border-b border-solid py-6 sm:py-8">
               <h2 className="text-center text-2xl font-semibold">
                 Plano Básico
               </h2>
@@ -34,7 +34,7 @@ const SubscriptionPage = async () => {
                 <span className="text-2xl text-muted-foreground">/mês</span>
               </div>
             </CardHeader>
-            <CardContent className="space-y-6 py-8">
+            <CardContent className="space-y-6 py-6 sm:py-8">
               <div className="flex items-center gap-2">
                 <CheckIcon className="text-primary" />
                 <p>
@@ -48,8 +48,8 @@ const SubscriptionPage = async () => {
             </CardContent>
           </Card>
 
-          <Card className="w-[450px]">
-            <CardHeader className="relative border-b border-solid py-8">
+          <Card className="w-full md:w-[450px]">
+            <CardHeader className="relative border-b border-solid py-6 sm:py-8">
               {hasPremiumPlan && (
                 <Badge className="absolute left-4 top-12 bg-primary/10 text-primary">
                   Ativo
@@ -64,7 +64,7 @@ const SubscriptionPage = async () => {
                 <span className="text-2xl text-muted-foreground">/mês</span>
               </div>
             </CardHeader>
-            <CardContent className="space-y-6 py-8">
+            <CardContent className="space-y-6 py-6 sm:py-8">
               <div className="flex items-center gap-2">
                 <CheckIcon className="text-primary" />
                 <p>Transações ilimitadas</p>

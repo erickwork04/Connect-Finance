@@ -44,12 +44,12 @@ const AiReportButton = ({ month }: AiReportButtonProps) => {
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="ghost">
+        <Button variant="ghost" className="h-11 sm:h-10 min-h-[44px] sm:min-h-0 text-xs sm:text-sm">
           Relatório IA
-          <BotIcon />
+          <BotIcon className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-[600px]">
+      <DialogContent className="max-w-[600px] w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>Relatório IA</DialogTitle>
           <DialogDescription>
@@ -57,16 +57,17 @@ const AiReportButton = ({ month }: AiReportButtonProps) => {
             sobre suas finanças.
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="max-h[420x] prose-h3:text-wh prose-n4:text-white prose text-white prose-strong:text-white">
+        <ScrollArea className="max-h-[420px] prose prose-h3:text-white prose-h4:text-white text-white prose-strong:text-white">
           <Markdown>{report}</Markdown>
         </ScrollArea>
-        <DialogFooter>
+        <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2">
           <DialogClose asChild>
-            <Button variant="ghost">Cancelar</Button>
+            <Button variant="ghost" className="h-11 sm:h-10">Cancelar</Button>
           </DialogClose>
           <Button
             onClick={handleGenerateAiReportClick}
             disabled={reportIsLoanding}
+            className="h-11 sm:h-10"
           >
             {reportIsLoanding && <Loader2Icon className="animate-spin" />}
             Gerar Relatório

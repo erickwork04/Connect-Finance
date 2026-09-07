@@ -1,55 +1,139 @@
 "use server";
 
 import { db } from "@/app/_lib/prisma";
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { getAuthUserId, getClerkUser } from "@/app/_lib/auth";
 import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 import { GenerateAiReportSchema, generateAiReportSchema } from "./schema";
+import { Transaction } from "@prisma/client";
 
 export const generateAiReport = async ({ month }: GenerateAiReportSchema) => {
   generateAiReportSchema.parse({ month });
-  const { userId } = await auth();
+  const userId = await getAuthUserId();
   if (!userId) {
     throw new Error("Unauthorized");
   }
-  const user = await clerkClient().users.getUser(userId);
-  const hasPremiumPlan = user.publicMetadata.subscriptionPlan === "premium";
+  const user = await getClerkUser(userId);
+  const hasPremiumPlan = user.publicMetadata?.subscriptionPlan === "premium";
   if (!hasPremiumPlan) {
     throw new Error("Você não tem o plano premium, adquira já");
   }
-  const openAi = new OpenAI({
-    apiKey: process.env.OPEN_API_KEY,
-  });
-  // pegar transações do mês recebido
-  const transactions = await db.transaction.findMany({
+
+  const currentYear = new Date().getFullYear();
+  const transactions: Transaction[] = await db.transaction.findMany({
     where: {
       date: {
-        gte: new Date(`2026-${month}-01`),
-        lt: new Date(`2026-${month}-31`),
+        gte: new Date(`${currentYear}-${month}-01`),
+        lt: new Date(`${currentYear}-${month}-31`),
       },
     },
   });
-  // madar as transações para o chatGPT e pedir para ele gerar um relatório com insights
-  const content = `Gere um relatório com insights sobre as minhas finanças, com dicas e orientações de como melhorar minha vida financeira. As transações estão divididas por ponto e vírgula. A estrutura de cada uma é {DATA}-{TIPO}-{VALOR}-{CATEGORIA}. São elas:
-  ${transactions
+
+  if (!transactions || transactions.length === 0) {
+    return `### Relatório Financeiro - Mês ${month}/${currentYear}\n\nNenhuma transação foi registrada para este mês até o momento. Comece adicionando seus ganhos e gastos no botão **+ Nova Transação** para gerar insights detalhados sobre sua saúde financeira!`;
+  }
+
+  const transactionsSummary = transactions
     .map(
-      (transaction) =>
-        `${transaction.date.toLocaleDateString("pt-BR")}-R$${transaction.amount}-${transaction.type}-${transaction.category}`,
+      (transaction: Transaction) =>
+        `${new Date(transaction.date).toLocaleDateString("pt-BR")}-R$${transaction.amount}-${transaction.type}-${transaction.category}`,
     )
-    .join(";")}`;
-  const completion = await openAi.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [
-      {
-        role: "system",
-        content:
-          "Você é um especialista em gestão e organização de finanças pessoais. Você ajuda as pessoas a organizarem melhor as suas finanças.",
-      },
-      {
-        role: "user",
-        content,
-      },
-    ],
+    .join(";");
+
+  const prompt = `Você é um especialista em gestão e organização de finanças pessoais.
+Gere um relatório completo com insights estruturados sobre as finanças do usuário, incluindo:
+1. Resumo Geral (Entradas, Saídas e Saldo)
+2. Principais centros de custo e despesas que chamam atenção
+3. Pontos de melhoria e oportunidades de economia
+4. Recomendações práticas e acionáveis para o próximo mês
+
+Estrutura das transações do mês ({DATA}-{TIPO}-{VALOR}-{CATEGORIA}):
+${transactionsSummary}
+
+Formate sua resposta em Markdown claro, elegante e profissional em português brasileiro.`;
+
+  // 1. Try Gemini if GEMINI_API_KEY is available
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+      });
+      if (response.text) {
+        return response.text;
+      }
+    } catch (geminiError) {
+      console.warn("[AI Studio] Gemini report generation failed:", geminiError);
+    }
+  }
+
+  // 2. Try OpenAI if key is available
+  const openAiKey = process.env.OPENAI_API_KEY || process.env.OPEN_API_KEY;
+  if (openAiKey) {
+    try {
+      const openAi = new OpenAI({ apiKey: openAiKey });
+      const completion = await openAi.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content:
+              "Você é um especialista em gestão e organização de finanças pessoais. Você ajuda as pessoas a organizarem melhor as suas finanças.",
+          },
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+      });
+      if (completion.choices[0]?.message?.content) {
+        return completion.choices[0].message.content;
+      }
+    } catch (openAiError) {
+      console.warn("[AI Studio] OpenAI report generation failed:", openAiError);
+    }
+  }
+
+  // 3. Fallback: Analytical report calculated from actual transaction data
+  let deposits = 0;
+  let expenses = 0;
+  let investments = 0;
+  const categories: Record<string, number> = {};
+
+  transactions.forEach((t: Transaction) => {
+    const amt = Number(t.amount) || 0;
+    if (t.type === "DEPOSIT") deposits += amt;
+    else if (t.type === "EXPENSE") {
+      expenses += amt;
+      categories[t.category] = (categories[t.category] || 0) + amt;
+    } else if (t.type === "INVESTMENT") investments += amt;
   });
-  // pegar o relatório gerado pelo ChatGPT e retornar para o usuário
-  return completion.choices[0].message.content;
+
+  const balance = deposits - expenses - investments;
+  const savingsRate = deposits > 0 ? Math.round(((deposits - expenses) / deposits) * 100) : 0;
+  const topCategories = Object.entries(categories).sort((a, b) => b[1] - a[1]);
+
+  return `### 📊 Relatório Financeiro Inteligente (${month}/${currentYear})
+
+#### 1. Resumo do Mês
+- **Receitas (Depósitos):** R$ ${deposits.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+- **Despesas:** R$ ${expenses.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+- **Investimentos:** R$ ${investments.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+- **Saldo Líquido:** R$ ${balance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+- **Taxa de Poupança:** ${savingsRate}%
+
+#### 2. Distribuição das Maiores Despesas
+${topCategories
+  .slice(0, 4)
+  .map(
+    ([cat, val]) =>
+      `- **${cat}:** R$ ${val.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (${Math.round((val / (expenses || 1)) * 100)}% dos gastos)`,
+  )
+  .join("\n")}
+
+#### 3. Recomendações e Próximos Passos
+1. **Controle de Despesas Fixas:** Monitore as despesas de moradia e alimentação para mantê-las em até 50% da sua renda.
+2. **Aporte Recorrente:** Busque reservar ao menos 15% a 20% das suas receitas líquidas no início do mês diretamente para investimentos.
+3. **Reserva de Emergência:** Caso ainda não possua, garanta de 3 a 6 meses do seu custo de vida alocados em liquidez diária.`;
 };
