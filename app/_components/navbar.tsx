@@ -10,7 +10,6 @@ import { Menu, X } from "lucide-react";
 const Navbar = () => {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const hasClerkKey = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
   const navLinks = [
     { href: "/", label: "Dashboard" },
@@ -54,18 +53,7 @@ const Navbar = () => {
 
         {/* DIREITA: Avatar e menu hamburguer mobile */}
         <div className="flex items-center gap-2 sm:gap-4">
-          {hasClerkKey ? (
-            <UserButton showName />
-          ) : (
-            <div className="flex items-center gap-2 rounded-full border border-border px-2.5 py-1 text-xs sm:text-sm">
-              <div className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
-                FA
-              </div>
-              <span className="hidden sm:inline font-medium text-foreground">
-                Demo User
-              </span>
-            </div>
-          )}
+          <UserButton showName />
 
           {/* Botão Hambúrguer Mobile */}
           <button

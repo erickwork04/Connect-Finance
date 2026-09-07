@@ -1,19 +1,20 @@
 "use server";
 
 import { db } from "@/app/_lib/prisma";
-import { getAuthUserId, getClerkUser } from "@/app/_lib/auth";
-import OpenAI from "openai";
+import { auth, clerkClient } from "@clerk/nextjs/server";
+// import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
 import { GenerateAiReportSchema, generateAiReportSchema } from "./schema";
 import { Transaction } from "@prisma/client";
 
 export const generateAiReport = async ({ month }: GenerateAiReportSchema) => {
   generateAiReportSchema.parse({ month });
-  const userId = await getAuthUserId();
+  const { userId } = await auth();
   if (!userId) {
     throw new Error("Unauthorized");
   }
-  const user = await getClerkUser(userId);
+  const client = await clerkClient();
+  const user = await client.users.getUser(userId);
   const hasPremiumPlan = user.publicMetadata?.subscriptionPlan === "premium";
   if (!hasPremiumPlan) {
     throw new Error("Você não tem o plano premium, adquira já");
@@ -22,6 +23,7 @@ export const generateAiReport = async ({ month }: GenerateAiReportSchema) => {
   const currentYear = new Date().getFullYear();
   const transactions: Transaction[] = await db.transaction.findMany({
     where: {
+      userId,
       date: {
         gte: new Date(`${currentYear}-${month}-01`),
         lt: new Date(`${currentYear}-${month}-31`),
@@ -52,13 +54,17 @@ ${transactionsSummary}
 
 Formate sua resposta em Markdown claro, elegante e profissional em português brasileiro.`;
 
-  // 1. Try Gemini if GEMINI_API_KEY is available
+  // 1. Gemini AI (Provedor de IA oficial)
   if (process.env.GEMINI_API_KEY) {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.8-flash",
         contents: prompt,
+        config: {
+          systemInstruction:
+            "Você é um especialista em gestão e organização de finanças pessoais. Você ajuda as pessoas a organizarem melhor as suas finanças de forma analítica e prática.",
+        },
       });
       if (response.text) {
         return response.text;
@@ -68,32 +74,34 @@ Formate sua resposta em Markdown claro, elegante e profissional em português br
     }
   }
 
-  // 2. Try OpenAI if key is available
-  const openAiKey = process.env.OPENAI_API_KEY || process.env.OPEN_API_KEY;
-  if (openAiKey) {
-    try {
-      const openAi = new OpenAI({ apiKey: openAiKey });
-      const completion = await openAi.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content:
-              "Você é um especialista em gestão e organização de finanças pessoais. Você ajuda as pessoas a organizarem melhor as suas finanças.",
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-      });
-      if (completion.choices[0]?.message?.content) {
-        return completion.choices[0].message.content;
-      }
-    } catch (openAiError) {
-      console.warn("[AI Studio] OpenAI report generation failed:", openAiError);
-    }
-  }
+  /*
+  // 2. OpenAI (Comentado a pedido do usuário - substituído pelo Gemini)
+  // const openAiKey = process.env.OPENAI_API_KEY || process.env.OPEN_API_KEY;
+  // if (openAiKey) {
+  //   try {
+  //     const openAi = new OpenAI({ apiKey: openAiKey });
+  //     const completion = await openAi.chat.completions.create({
+  //       model: "gpt-4o-mini",
+  //       messages: [
+  //         {
+  //           role: "system",
+  //           content:
+  //             "Você é um especialista em gestão e organização de finanças pessoais. Você ajuda as pessoas a organizarem melhor as suas finanças.",
+  //         },
+  //         {
+  //           role: "user",
+  //           content: prompt,
+  //         },
+  //       ],
+  //     });
+  //     if (completion.choices[0]?.message?.content) {
+  //       return completion.choices[0].message.content;
+  //     }
+  //   } catch (openAiError) {
+  //     console.warn("[AI Studio] OpenAI report generation failed:", openAiError);
+  //   }
+  // }
+  */
 
   // 3. Fallback: Analytical report calculated from actual transaction data
   let deposits = 0;

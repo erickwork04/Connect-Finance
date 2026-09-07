@@ -1,7 +1,6 @@
 import { clerkClient } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { isClerkConfigured } from "../../../_lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -36,18 +35,16 @@ export const POST = async (request: Request) => {
         if (!clerkUserId) {
           return NextResponse.json({ error: "No clerk user id" }, { status: 400 });
         }
-        if (isClerkConfigured()) {
-          const client = await clerkClient();
-          await client.users.updateUser(clerkUserId, {
-            privateMetadata: {
-              stripeCustomerId: customer,
-              stripeSubscription: subscription,
-            },
-            publicMetadata: {
-              subscriptionPlan: "premium",
-            },
-          });
-        }
+        const client = await clerkClient();
+        await client.users.updateUser(clerkUserId, {
+          privateMetadata: {
+            stripeCustomerId: customer,
+            stripeSubscription: subscription,
+          },
+          publicMetadata: {
+            subscriptionPlan: "premium",
+          },
+        });
         break;
       }
       case "customer.subscription.deleted": {
@@ -57,18 +54,16 @@ export const POST = async (request: Request) => {
         if (!clerkUserId) {
           return NextResponse.json({ error: "No clerk user id" }, { status: 400 });
         }
-        if (isClerkConfigured()) {
-          const client = await clerkClient();
-          await client.users.updateUser(clerkUserId, {
-            privateMetadata: {
-              stripeCustomerId: null,
-              stripeSubscriptionId: null,
-            },
-            publicMetadata: {
-              subscriptionPlan: null,
-            },
-          });
-        }
+        const client = await clerkClient();
+        await client.users.updateUser(clerkUserId, {
+          privateMetadata: {
+            stripeCustomerId: null,
+            stripeSubscriptionId: null,
+          },
+          publicMetadata: {
+            subscriptionPlan: null,
+          },
+        });
         break;
       }
     }

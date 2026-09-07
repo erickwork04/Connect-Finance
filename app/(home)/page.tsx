@@ -9,7 +9,7 @@ import ExpensesPerCategory from "./_componets/expenses-per-category";
 import LastTransactions from "./_componets/last-transactions";
 import { canUserAddTransaction } from "../_data/get-dashboard/get-current-month-transactions/can-user-add-transactions";
 import AiReportButton from "./_componets/ai-report-button";
-import { getAuthUserId } from "../_lib/auth";
+import { auth } from "@clerk/nextjs/server";
 
 interface HomeProps {
   searchParams: {
@@ -18,7 +18,7 @@ interface HomeProps {
 }
 
 const Home = async ({ searchParams: { month } }: HomeProps) => {
-  const userId = await getAuthUserId();
+  const { userId } = await auth();
   if (!userId) {
     redirect("/login");
   }

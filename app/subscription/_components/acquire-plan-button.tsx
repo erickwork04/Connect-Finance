@@ -6,10 +6,14 @@ import { loadStripe } from "@stripe/stripe-js";
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
 
-const AcquirePlanButtonClerk = () => {
+const AcquirePlanButton = () => {
   const { user } = useUser();
   const handleAcquirePlanClick = async () => {
-    const { sessionId } = await createStripeCheckout();
+    const { sessionId, url } = await createStripeCheckout();
+    if (url) {
+      window.location.href = url;
+      return;
+    }
     if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
       throw new Error("Stripe publishable key not found");
     }
@@ -19,7 +23,8 @@ const AcquirePlanButtonClerk = () => {
     if (!stripe) {
       throw new Error("Stripe not found");
     }
-    await stripe.redirectToCheckout({ sessionId });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (stripe as any).redirectToCheckout({ sessionId });
   };
   const hasPremiumPlan = user?.publicMetadata?.subscriptionPlan === "premium";
   if (hasPremiumPlan) {
@@ -41,18 +46,6 @@ const AcquirePlanButtonClerk = () => {
       Adquirir plano
     </Button>
   );
-};
-
-const AcquirePlanButton = () => {
-  const hasClerkKey = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
-  if (!hasClerkKey) {
-    return (
-      <Button className="w-full rounded-full font-bold" variant="secondary" disabled>
-        Plano Premium Demo Ativo
-      </Button>
-    );
-  }
-  return <AcquirePlanButtonClerk />;
 };
 
 export default AcquirePlanButton;

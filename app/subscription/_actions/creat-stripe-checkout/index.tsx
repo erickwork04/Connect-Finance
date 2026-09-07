@@ -1,10 +1,10 @@
 "use server";
 
-import { getAuthUserId } from "@/app/_lib/auth";
+import { auth } from "@clerk/nextjs/server";
 import Stripe from "stripe";
 
 export const createStripeCheckout = async () => {
-  const userId = await getAuthUserId();
+  const { userId } = await auth();
   if (!userId) {
     throw new Error("Unauthorized");
   }
@@ -32,5 +32,5 @@ export const createStripeCheckout = async () => {
       },
     ],
   });
-  return { sessionId: session.id };
+  return { sessionId: session.id, url: session.url };
 };

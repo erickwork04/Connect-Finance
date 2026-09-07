@@ -20,22 +20,16 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const hasClerkKey = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
-
   return (
     <html lang="en" className="dark">
       <body className={`${mulish.className} dark antialiased`}>
-        {hasClerkKey ? (
-          <ClerkProvider
-            appearance={{
-              baseTheme: dark,
-            }}
-          >
-            <div className="flex h-full flex-col overflow-y-auto">{children}</div>
-          </ClerkProvider>
-        ) : (
+        <ClerkProvider
+          appearance={{
+            baseTheme: dark,
+          }}
+        >
           <div className="flex h-full flex-col overflow-y-auto">{children}</div>
-        )}
+        </ClerkProvider>
         <Toaster />
       </body>
     </html>

@@ -6,14 +6,15 @@ import { CheckIcon, XIcon } from "lucide-react";
 import AcquirePlanButton from "./_components/acquire-plan-button";
 import { Badge } from "../_components/ui/badge";
 import { getCurrentMonthTransactions } from "../_data/get-dashboard/get-current-month-transactions";
-import { getAuthUserId, getClerkUser } from "../_lib/auth";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 
 const SubscriptionPage = async () => {
-  const userId = await getAuthUserId();
+  const { userId } = await auth();
   if (!userId) {
     redirect("/login");
   }
-  const user = await getClerkUser(userId);
+  const client = await clerkClient();
+  const user = await client.users.getUser(userId);
   const currentMonthTransactions = await getCurrentMonthTransactions();
   const hasPremiumPlan = user.publicMetadata?.subscriptionPlan === "premium";
   return (

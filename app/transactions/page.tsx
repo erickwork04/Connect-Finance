@@ -6,10 +6,10 @@ import Navbar from "../_components/navbar";
 import { redirect } from "next/navigation";
 import { ScrollArea } from "../_components/ui/scroll-area";
 import { canUserAddTransaction } from "../_data/get-dashboard/get-current-month-transactions/can-user-add-transactions";
-import { getAuthUserId } from "../_lib/auth";
+import { auth } from "@clerk/nextjs/server";
 
 const TransitionsPage = async () => {
-  const userId = await getAuthUserId();
+  const { userId } = await auth();
   if (!userId) {
     redirect("/login");
   }

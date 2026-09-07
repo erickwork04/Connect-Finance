@@ -1,10 +1,10 @@
 import { db } from "@/app/_lib/prisma";
 import { TransactionCategory, TransactionType } from "@prisma/client";
 import { TotalExpensePerCategory, TransactionPercentagePerType } from "./types";
-import { getAuthUserId } from "@/app/_lib/auth";
+import { auth } from "@clerk/nextjs/server";
 
 export const getDashboard = async (month: string) => {
-  const userId = await getAuthUserId();
+  const { userId } = await auth();
   if (!userId) {
     throw new Error("Unauthorized");
   }
