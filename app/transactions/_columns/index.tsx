@@ -15,6 +15,26 @@ export const transactionColumns: ColumnDef<Transaction>[] = [
   {
     accessorKey: "name",
     header: "Nome",
+    cell: ({ row: { original: transaction } }) => (
+      <div className="flex items-center gap-1.5">
+        <span className="font-medium">{transaction.name}</span>
+        {transaction.source === "OFX" && (
+          <span className="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            OFX
+          </span>
+        )}
+        {transaction.source === "CARD_INVOICE" && (
+          <span className="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            Fatura
+          </span>
+        )}
+        {transaction.source === "CSV" && (
+          <span className="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">
+            CSV
+          </span>
+        )}
+      </div>
+    ),
   },
   {
     accessorKey: "type",

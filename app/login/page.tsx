@@ -11,18 +11,18 @@ const LoginPage = async () => {
     redirect("/");
   }
   return (
-    <div className="grid h-full grid-cols-1 lg:grid-cols-2">
+    <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
       {/*ESQUERDA*/}
-      <div className="mx-auto flex h-full max-w-[550px] flex-col justify-center p-6 sm:p-8">
+      <div className="mx-auto flex min-h-screen lg:min-h-0 w-full max-w-[550px] flex-col justify-center p-6 sm:p-8">
         <Image
           src="/logo.svg"
           width={173}
           height={39}
           alt="Finance AI"
-          className="mb-8"
+          className="mb-6 sm:mb-8 h-8 sm:h-9 w-auto"
         />
-        <h1 className="mb-3 text-3xl sm:text-4xl font-bold">Bem-vindo</h1>
-        <p className="mb-8 text-sm sm:text-base text-muted-foreground">
+        <h1 className="mb-3 text-2xl sm:text-4xl font-bold">Bem-vindo</h1>
+        <p className="mb-6 sm:mb-8 text-sm sm:text-base text-muted-foreground">
           A Finance AI é uma plataforma de gestão financeira que utiliza IA para
           monitorar suas movimentações, e oferecer insights personalizados,
           facilitando o controle do seu orçamento.

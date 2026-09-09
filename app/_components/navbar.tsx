@@ -52,8 +52,10 @@ const Navbar = () => {
         </div>
 
         {/* DIREITA: Avatar e menu hamburguer mobile */}
-        <div className="flex items-center gap-2 sm:gap-4">
-          <UserButton showName />
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+          <div className="[&_.cl-userButtonOuterIdentifier]:hidden sm:[&_.cl-userButtonOuterIdentifier]:block">
+            <UserButton showName />
+          </div>
 
           {/* Botão Hambúrguer Mobile */}
           <button
@@ -61,7 +63,7 @@ const Navbar = () => {
             id="mobile-nav-toggle"
             aria-label={mobileMenuOpen ? "Fechar menu" : "Abrir menu"}
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex h-11 w-11 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:hidden"
+            className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:hidden"
           >
             {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>

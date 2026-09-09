@@ -2,10 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
-}
-
 @layer utilities {
   .text-balance {
     text-wrap: balance;
@@ -74,9 +70,9 @@ body {
     @apply border-border;
   }
   html {
-    @apply h-full;
+    @apply min-h-full scroll-smooth;
   }
   body {
-    @apply h-full bg-background text-foreground;
+    @apply min-h-full bg-background text-foreground overflow-x-hidden;
   }
 }

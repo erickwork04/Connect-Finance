@@ -29,29 +29,33 @@ const Home = async ({ searchParams: { month } }: HomeProps) => {
   return (
     <>
       <Navbar />
-      <div className="flex flex-col space-y-3 sm:space-y-6 p-3.5 sm:p-6 max-w-7xl mx-auto w-full">
-        <div className="flex flex-row items-center justify-between gap-2 flex-wrap">
-          <h1 className="text-lg sm:text-2xl font-bold tracking-tight">Dashboard</h1>
-          <div className="flex items-center gap-1.5 sm:gap-3">
+      <div className="flex flex-col space-y-4 sm:space-y-6 p-4 sm:p-6 max-w-7xl mx-auto w-full min-w-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Dashboard</h1>
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <AiReportButton month={selectedMonth} />
             <TimeSelect />
           </div>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr,1fr] gap-4 sm:gap-6">
-          <div className="flex flex-col gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr,1fr] gap-4 sm:gap-6 min-w-0">
+          <div className="flex flex-col gap-4 sm:gap-6 min-w-0">
             <SummaryCards
               month={selectedMonth}
               {...dashboard}
               userCanAddTransaction={userCanAddTransaction}
             />
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-              <TransactionsPieChart {...dashboard} />
-              <ExpensesPerCategory
-                expensesPerCategory={dashboard.totalExpensePerCategory}
-              />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 min-w-0">
+              <div className="col-span-1 min-w-0">
+                <TransactionsPieChart {...dashboard} />
+              </div>
+              <div className="col-span-1 lg:col-span-2 min-w-0">
+                <ExpensesPerCategory
+                  expensesPerCategory={dashboard.totalExpensePerCategory}
+                />
+              </div>
             </div>
           </div>
-          <div className="w-full">
+          <div className="w-full min-w-0">
             <LastTransactions lastTransactions={dashboard.lastTransactions} />
           </div>
         </div>
