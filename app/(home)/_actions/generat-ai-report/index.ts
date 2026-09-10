@@ -43,16 +43,16 @@ export const generateAiReport = async ({ month }: GenerateAiReportSchema) => {
     .join(";");
 
   const prompt = `Você é um especialista em gestão e organização de finanças pessoais.
-Gere um relatório completo com insights estruturados sobre as finanças do usuário, incluindo:
-1. Resumo Geral (Entradas, Saídas e Saldo)
-2. Principais centros de custo e despesas que chamam atenção
-3. Pontos de melhoria e oportunidades de economia
-4. Recomendações práticas e acionáveis para o próximo mês
+    Gere um relatório completo com insights estruturados sobre as finanças do usuário, incluindo:
+    1. Resumo Geral (Entradas, Saídas e Saldo)
+    2. Principais centros de custo e despesas que chamam atenção
+    3. Pontos de melhoria e oportunidades de economia
+    4. Recomendações práticas e acionáveis para o próximo mês
 
-Estrutura das transações do mês ({DATA}-{TIPO}-{VALOR}-{CATEGORIA}):
-${transactionsSummary}
+    Estrutura das transações do mês ({DATA}-{TIPO}-{VALOR}-{CATEGORIA}):
+    ${transactionsSummary}
 
-Formate sua resposta em Markdown claro, elegante e profissional em português brasileiro.`;
+    Formate sua resposta em Markdown claro, elegante e profissional em português brasileiro.`;
 
   // 1. Gemini AI (Provedor de IA oficial)
   if (process.env.GEMINI_API_KEY) {

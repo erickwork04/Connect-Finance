@@ -24,11 +24,11 @@ const Navbar = () => {
         <div className="flex items-center gap-6 lg:gap-10">
           <Link href="/" className="shrink-0">
             <Image
-              src="/logo.svg"
+              src="/logo.png"
               width={173}
               height={39}
-              alt="Finance AI"
-              className="h-7 w-auto sm:h-9"
+              alt="Connect Finance"
+              className="mb-6 sm:mb-8 h-6 sm:h-7 w-auto"
               priority
             />
           </Link>
@@ -80,11 +80,10 @@ const Navbar = () => {
                 key={link.href}
                 href={link.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`flex h-11 items-center rounded-md px-3 text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-primary/10 text-primary font-bold"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                }`}
+                className={`flex h-11 items-center rounded-md px-3 text-sm font-medium transition-colors ${isActive
+                  ? "bg-primary/10 text-primary font-bold"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  }`}
               >
                 {link.label}
               </Link>

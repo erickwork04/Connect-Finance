@@ -15,15 +15,15 @@ const LoginPage = async () => {
       {/*ESQUERDA*/}
       <div className="mx-auto flex min-h-screen lg:min-h-0 w-full max-w-[550px] flex-col justify-center p-6 sm:p-8">
         <Image
-          src="/logo.svg"
+          src="/logo.png"
           width={173}
           height={39}
-          alt="Finance AI"
+          alt="Connect Finance"
           className="mb-6 sm:mb-8 h-8 sm:h-9 w-auto"
         />
         <h1 className="mb-3 text-2xl sm:text-4xl font-bold">Bem-vindo</h1>
         <p className="mb-6 sm:mb-8 text-sm sm:text-base text-muted-foreground">
-          A Finance AI é uma plataforma de gestão financeira que utiliza IA para
+          A Connect Finance é uma plataforma de gestão financeira que utiliza IA para
           monitorar suas movimentações, e oferecer insights personalizados,
           facilitando o controle do seu orçamento.
         </p>

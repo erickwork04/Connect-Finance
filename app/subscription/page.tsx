@@ -8,6 +8,7 @@ import { Badge } from "../_components/ui/badge";
 import { getCurrentMonthTransactions } from "../_data/get-dashboard/get-current-month-transactions";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 
+
 const SubscriptionPage = async () => {
   const { userId } = await auth();
   if (!userId) {
@@ -70,10 +71,12 @@ const SubscriptionPage = async () => {
                 <CheckIcon className="text-primary" />
                 <p>Transações ilimitadas</p>
               </div>
+
               <div className="flex items-center gap-2">
                 <CheckIcon className="text-primary" />
                 <p>Relatórios de IA</p>
               </div>
+
               <AcquirePlanButton />
             </CardContent>
           </Card>
