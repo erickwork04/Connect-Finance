@@ -1,8 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Mulish } from "next/font/google";
-// The stylesheet is processed by Next.js; its ambient type declaration may be
-// unavailable to standalone TypeScript language services.
-// @ts-expect-error Next.js handles CSS side-effect imports at build time.
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";

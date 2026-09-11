@@ -13,12 +13,16 @@ if (publicKey) {
     initMercadoPago(publicKey);
 }
 
+type MercadoPagoFormData = {
+    token?: string;
+};
+
 const MercadoPagoPayment = () => {
     const initialization = {
         amount: 19.9,
     };
 
-    const handleSubmit = async (formData: any) => {
+    const handleSubmit = async (formData: MercadoPagoFormData) => {
         try {
 
             const cardTokenId = formData.token;
