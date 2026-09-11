@@ -15,21 +15,13 @@ export const createMercadoPagoCheckout = async ( cardTokenId: string) => {
     throw new Error("Usuário não encontrado.");
   }
 
-  if (
-    !process.env.MERCADO_PAGO_ACCESS_TOKEN ||
-    !process.env.MERCADO_PAGO_PREMIUM_PLAN_ID
-  ) {
-    throw new Error(
-      "As chaves do Mercado Pago não foram configuradas nas variáveis de ambiente."
-    );
+  if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) {
+    throw new Error("As chaves do Mercado Pago não foram configuradas nas variáveis de ambiente.");
   }
 
   const appUrl = process.env.APP_URL || "http://localhost:3000";
 
-  //const payerEmail = user.emailAddresses[0]?.emailAddress;
-
-  const payerEmail = process.env.MERCADO_PAGO_TEST_PAYER_EMAIL ||
-  user.emailAddresses[0]?.emailAddress;
+  const payerEmail = user.emailAddresses[0]?.emailAddress;;
 
   if (!payerEmail) {
     throw new Error("O usuário não possui um e-mail cadastrado.");
@@ -40,47 +32,59 @@ export const createMercadoPagoCheckout = async ( cardTokenId: string) => {
     hasAccessToken: !!process.env.MERCADO_PAGO_ACCESS_TOKEN,
   });
 
-  const response = await fetch("https://api.mercadopago.com/preapproval",
-  {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.MERCADO_PAGO_ACCESS_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-    reason: "Connect Finance Premium",
+  console.log("Mercado Pago request:", {
+    url: "https://api.mercadopago.com/preapproval",
+    payerEmail,
+    cardTokenId: cardTokenId ? `${cardTokenId.substring(0, 8)}...` : null,
+    planId: process.env.MERCADO_PAGO_PREMIUM_PLAN_ID,
+    accessTokenPrefix:
+      process.env.MERCADO_PAGO_ACCESS_TOKEN?.substring(0, 12),
+  });
 
-    external_reference: userId,
+  const payload = {
+  preapproval_plan_id: process.env.MERCADO_PAGO_PREMIUM_PLAN_ID,
+  reason: "Plano Premium - Connect Finance",
+  external_reference: userId,
+  payer_email: payerEmail,
+  card_token_id: cardTokenId,
+  status: "authorized",
+  back_url: `${appUrl}/subscription`,
+};
 
-    payer_email: payerEmail,
+  console.log("Payload Mercado Pago:", {
+    ...payload,
+    card_token_id: `${cardTokenId.substring(0, 8)}...`,
+  });
 
-    card_token_id: cardTokenId,
-
-    status: "authorized",
-
-    auto_recurring: {
-      frequency: 1,
-      frequency_type: "months",
-      transaction_amount: 19.9,
-      currency_id: "BRL",
-    },
-
-    back_url: `${appUrl}/subscription`,
-  }),
-  }
+  const response = await fetch(
+    "https://api.mercadopago.com/preapproval",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.MERCADO_PAGO_ACCESS_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      cache: "no-store",
+    }
   );
 
+  const responseText = await response.text();
+
+  console.log("Mercado Pago response:", {
+    status: response.status,
+    statusText: response.statusText,
+    body: responseText,
+    headers: Object.fromEntries(response.headers.entries()),
+  });
+
   if (!response.ok) {
-    const error = await response.text();
-
-    console.error("Mercado Pago error:", error);
-
     throw new Error(
-      "Não foi possível criar a assinatura no Mercado Pago."
+      `Mercado Pago retornou ${response.status} ${response.statusText}: ${responseText}`
     );
   }
 
-  const subscription = await response.json();
+  const subscription = JSON.parse(responseText);
 
   return {
     subscriptionId: subscription.id,

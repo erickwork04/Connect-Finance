@@ -7,8 +7,7 @@ import {
 
 import { createMercadoPagoCheckout } from "../_actions/create-mercado-pago-checkout";
 
-const publicKey =
-    process.env.NEXT_PUBLIC_MERCADO_PAGO_PUBLIC_KEY;
+const publicKey = process.env.NEXT_PUBLIC_MERCADO_PAGO_PUBLIC_KEY;
 
 if (publicKey) {
     initMercadoPago(publicKey);
@@ -21,14 +20,11 @@ const MercadoPagoPayment = () => {
 
     const handleSubmit = async (formData: any) => {
         try {
-            console.log("Dados retornados pelo Mercado Pago:", formData);
 
             const cardTokenId = formData.token;
 
             if (!cardTokenId) {
-                throw new Error(
-                    "O Mercado Pago não retornou o token do cartão.",
-                );
+                throw new Error("O Mercado Pago não retornou o token do cartão.");
             }
 
             const result = await createMercadoPagoCheckout(
@@ -39,20 +35,13 @@ const MercadoPagoPayment = () => {
                 window.location.href = result.url;
             }
         } catch (error) {
-            console.error(
-                "Erro ao criar assinatura:",
-                error,
-            );
-
+            console.error("Erro ao criar assinatura:", error);
             throw error;
         }
     };
 
     const handleError = async (error: unknown) => {
-        console.error(
-            "Erro no formulário do Mercado Pago:",
-            error,
-        );
+        console.error("Erro no formulário do Mercado Pago:", error);
     };
 
     const handleReady = async () => {

@@ -23,14 +23,16 @@ const Navbar = () => {
         {/* ESQUERDA: Logo e links desktop */}
         <div className="flex items-center gap-6 lg:gap-10">
           <Link href="/" className="shrink-0">
-            <Image
-              src="/logo.png"
-              width={173}
-              height={39}
-              alt="Connect Finance"
-              className="mb-6 sm:mb-8 h-6 sm:h-7 w-auto"
-              priority
-            />
+            <div className="flex h-[88px] w-[260px] items-center overflow-hidden">
+              <Image
+                src="/logo.png"
+                width={500}
+                height={150}
+                alt="Connect Finance"
+                priority
+                className="w-[260px] h-auto object-contain"
+              />
+            </div>
           </Link>
 
           {/* Links Desktop */}

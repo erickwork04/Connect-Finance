@@ -12,30 +12,40 @@ const LoginPage = async () => {
   }
   return (
     <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
-      {/*ESQUERDA*/}
-      <div className="mx-auto flex min-h-screen lg:min-h-0 w-full max-w-[550px] flex-col justify-center p-6 sm:p-8">
+      {/* ESQUERDA */}
+      <div className=" mx-auto flex min-h-screen lg:min-h-0 w-full max-w-[550px] flex-col justify-center p-6 sm:p-8">
+        {/* LOGO */}
         <Image
           src="/logo.png"
-          width={173}
-          height={39}
           alt="Connect Finance"
-          className="mb-6 sm:mb-8 h-8 sm:h-9 w-auto"
+          width={1200}
+          height={450}
+          priority
+          className="mb-[10%] w-[90%] h-auto object-contain scale-[1.6]"
         />
-        <h1 className="mb-3 text-2xl sm:text-4xl font-bold">Bem-vindo</h1>
+
+        <h1 className="mb-3 text-2xl sm:text-4xl font-bold">
+          Bem-vindo
+        </h1>
+
         <p className="mb-6 sm:mb-8 text-sm sm:text-base text-muted-foreground">
           A Connect Finance é uma plataforma de gestão financeira que utiliza IA para
           monitorar suas movimentações, e oferecer insights personalizados,
           facilitando o controle do seu orçamento.
         </p>
+
         <SignInButton>
-          <Button variant="outline" className="w-full sm:w-auto h-11 min-h-[44px]">
+          <Button
+            variant="outline"
+            className="w-full sm:w-auto h-11 min-h-[44px]"
+          >
             <LogInIcon className="mr-2 h-4 w-4" />
             Fazer Login ou criar conta
           </Button>
         </SignInButton>
       </div>
 
-      {/*DIREITA*/}
+      {/* DIREITA */}
       <div className="relative hidden lg:block h-full w-full">
         <Image
           src="/login.png"

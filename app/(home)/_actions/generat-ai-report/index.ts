@@ -16,8 +16,9 @@ export const generateAiReport = async ({ month }: GenerateAiReportSchema) => {
   const client = await clerkClient();
   const user = await client.users.getUser(userId);
   const hasPremiumPlan = user.publicMetadata?.subscriptionPlan === "premium";
+
   if (!hasPremiumPlan) {
-    throw new Error("Você não tem o plano premium, adquira já");
+    throw new Error("Você não possui o plano Premium. Assine agora para gerar relatórios com IA.");
   }
 
   const currentYear = new Date().getFullYear();
