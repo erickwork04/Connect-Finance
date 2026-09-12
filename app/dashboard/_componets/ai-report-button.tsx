@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/app/_components/ui/button";
+
 import {
   Dialog,
   DialogClose,
@@ -11,18 +12,22 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/app/_components/ui/dialog";
+
 import { BotIcon, Loader2Icon } from "lucide-react";
 import { generateAiReport } from "./_actions/generat-ai-report";
 import { useState } from "react";
 import { ScrollArea } from "@/app/_components/ui/scroll-area";
 import Markdown from "react-markdown";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 interface AiReportButtonProps {
   month: string;
 }
 
 const AiReportButton = ({ month }: AiReportButtonProps) => {
+  const router = useRouter();
+
   const [report, setReport] = useState<string | null>(null);
   const [reportIsLoanding, setReportIsLoading] = useState(false);
 
@@ -30,17 +35,42 @@ const AiReportButton = ({ month }: AiReportButtonProps) => {
     try {
       setReportIsLoading(true);
 
-      const aiReport = await generateAiReport({ month });
+      const result = await generateAiReport({ month });
 
-      setReport(aiReport);
-    } catch (error) {
-      console.error(error);
+      if (!result.success) {
+        if (result.code === "SUBSCRIPTION_REQUIRED") {
+          toast.error(result.message, {
+            action: {
+              label: "Ver Premium",
+              onClick: () => router.push("/subscription"),
+            },
+          });
 
-      if (error instanceof Error) {
-        toast.error(error.message);
-      } else {
-        toast.error("Não foi possível gerar o relatório.");
+          return;
+        }
+
+        if (result.code === "UNAUTHORIZED") {
+          toast.error(result.message);
+          router.push("/login");
+          return;
+        }
+
+        if (result.code === "INVALID_DATA") {
+          toast.error(result.message);
+          return;
+        }
+
+        toast.error(result.message);
+        return;
       }
+
+      setReport(result.report);
+    } catch (error) {
+      console.error("[AI Report Button] Unexpected error:", error);
+
+      toast.error(
+        "Não foi possível gerar o relatório. Tente novamente em alguns instantes.",
+      );
     } finally {
       setReportIsLoading(false);
     }
@@ -74,9 +104,11 @@ const AiReportButton = ({ month }: AiReportButtonProps) => {
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[420px] prose prose-h3:text-white prose-h4:text-white text-white prose-strong:text-white">
-          <Markdown>{report}</Markdown>
-        </ScrollArea>
+        {report && (
+          <ScrollArea className="max-h-[420px] prose prose-h3:text-white prose-h4:text-white text-white prose-strong:text-white">
+            <Markdown>{report}</Markdown>
+          </ScrollArea>
+        )}
 
         <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2">
           <DialogClose asChild>
@@ -94,7 +126,7 @@ const AiReportButton = ({ month }: AiReportButtonProps) => {
               <Loader2Icon className="animate-spin" />
             )}
 
-            Gerar Relatório
+            {reportIsLoanding ? "Gerando..." : "Gerar Relatório"}
           </Button>
         </DialogFooter>
       </DialogContent>
