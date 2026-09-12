@@ -9,7 +9,7 @@ const mulish = Mulish({
   subsets: ["latin-ext"],
 });
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Connect Finance",
   description:
     "Organize suas finanças, acompanhe receitas e despesas e tenha insights inteligentes para tomar melhores decisões.",
