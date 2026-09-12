@@ -9,10 +9,35 @@ const mulish = Mulish({
   subsets: ["latin-ext"],
 });
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "Connect Finance",
   description:
-    "A personal finance management platform that tracks transactions, provides financial analytics, and generates AI-powered insights.",
+    "Organize suas finanças, acompanhe receitas e despesas e tenha insights inteligentes para tomar melhores decisões.",
+
+  openGraph: {
+    title: "Connect Finance",
+    description:
+      "Organize suas finanças, acompanhe receitas e despesas e tenha insights inteligentes para tomar melhores decisões.",
+    url: "https://www.financeconnect.com.br",
+    siteName: "Connect Finance",
+    images: [
+      {
+        url: "https://www.financeconnect.com.br/og-image.jpeg",
+        width: 1200,
+        height: 630,
+        alt: "Connect Finance",
+      },
+    ],
+    type: "website",
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title: "Connect Finance",
+    description:
+      "Organize suas finanças, acompanhe receitas e despesas e tenha insights inteligentes para tomar melhores decisões.",
+    images: ["https://www.financeconnect.com.br/og-image.jpeg"],
+  },
 };
 
 export const viewport: Viewport = {
@@ -21,6 +46,8 @@ export const viewport: Viewport = {
   maximumScale: 5,
   themeColor: "#09090b",
 };
+
+
 
 export default function RootLayout({
   children,
