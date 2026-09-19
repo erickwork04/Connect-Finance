@@ -6,6 +6,8 @@ const isPublicRoute = createRouteMatcher([
   "/login(.*)",
   "/privacy",
   "/terms",
+  "/api/webhooks/stripe",
+  "/api/webhooks/mercado-pago",
 ]);
 
 export default clerkMiddleware((auth, request) => {
