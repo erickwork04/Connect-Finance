@@ -6,16 +6,23 @@ import Navbar from "../_components/navbar";
 import { redirect } from "next/navigation";
 import { canUserAddTransaction } from "../_data/get-dashboard/get-current-month-transactions/can-user-add-transactions";
 import { auth } from "@clerk/nextjs/server";
+import { toTransactionRow } from "./_lib/transaction-row";
+import PageHeader from "../_components/page-header";
+import { getYearMonthRangeUtc, resolveYearMonth } from "../_lib/month-range";
 
-const TransitionsPage = async () => {
+const TransitionsPage = async ({ searchParams }: { searchParams: Promise<{ month?: string | string[] }> }) => {
+  const params = await searchParams;
   const { userId } = await auth();
   if (!userId) {
     redirect("/login");
   }
+  const month = resolveYearMonth(params.month);
+  if (params.month !== month) redirect(`/transactions?month=${month}`);
   // acessar as transações do meu banco de dados
   const transactions = await db.transaction.findMany({
     where: {
       userId,
+      date: getYearMonthRangeUtc(month),
     },
     orderBy: {
       date: "desc",
@@ -26,18 +33,16 @@ const TransitionsPage = async () => {
   return (
     <>
       <Navbar />
-      <div className="flex flex-col space-y-4 sm:space-y-6 p-4 sm:p-6 max-w-7xl mx-auto w-full">
-        {/*Título e botão*/}
-        <div className="flex flex-col sm:flex-row w-full sm:items-center sm:justify-between gap-3">
-          <h1 className="text-xl sm:text-2xl font-bold">Transações</h1>
+      <div className="flex flex-col space-y-4 sm:space-y-6 p-4 sm:p-6 max-w-[1680px] mx-auto w-full">
+        <PageHeader title={`Transações · ${month.slice(5)}/${month.slice(0, 4)}`} actions={
           <div className="w-full sm:w-auto">
             <AddTransactionButton userCanAddTransaction={userCanAddTransaction} />
           </div>
-        </div>
+        } />
         <div className="w-full min-w-0 overflow-x-auto rounded-md">
           <DataTable
             columns={transactionColumns}
-            data={JSON.parse(JSON.stringify(transactions))}
+            data={transactions.map(toTransactionRow)}
           />
         </div>
       </div>

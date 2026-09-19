@@ -1,1 +1,0 @@
-- **NUNCA** use any nas props de um componente.

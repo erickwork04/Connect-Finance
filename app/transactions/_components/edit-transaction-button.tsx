@@ -2,12 +2,12 @@
 
 import { Button } from "@/app/_components/ui/button";
 import UpsertTransactionDialog from "@/app/_components/upsert-transaction-dialog";
-import { Transaction } from "@prisma/client";
 import { PencilIcon } from "lucide-react";
 import { useState } from "react";
+import { toTransactionFormValues, type TransactionRow } from "../_lib/transaction-row";
 
 interface EditTransactionButtonProps {
-  transaction: Transaction;
+  transaction: TransactionRow;
 }
 
 const EditTransactionButton = ({ transaction }: EditTransactionButtonProps) => {
@@ -26,10 +26,7 @@ const EditTransactionButton = ({ transaction }: EditTransactionButtonProps) => {
       <UpsertTransactionDialog
         IsOpen={dialogIsOpen}
         setIsOpen={setDialogIsOpen}
-        defaultValues={{
-          ...transaction,
-          amount: Number(transaction.amount),
-        }}
+        defaultValues={toTransactionFormValues(transaction)}
         transactionId={transaction.id}
       />
     </>

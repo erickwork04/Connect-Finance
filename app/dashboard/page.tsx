@@ -1,69 +1,40 @@
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import Navbar from "../_components/navbar";
-import SummaryCards from "./_componets/summary-cards";
-import TimeSelect from "./_componets/time-select";
-import { isMatch } from "date-fns";
-import TransactionsPieChart from "./_componets/transactions-pie-chart";
-import { getDashboard } from "../_data/get-dashboard";
-import ExpensesPerCategory from "./_componets/expenses-per-category";
-import LastTransactions from "./_componets/last-transactions";
-import { canUserAddTransaction } from "../_data/get-dashboard/get-current-month-transactions/can-user-add-transactions";
-import AiReportButton from "./_componets/ai-report-button";
-import { auth } from "@clerk/nextjs/server";
+import Navbar from "@/app/_components/navbar";
+import PageHeader from "@/app/_components/page-header";
+import { resolveYearMonth } from "@/app/_lib/month-range";
+import { canUserAddTransaction } from "@/app/_data/get-dashboard/get-current-month-transactions/can-user-add-transactions";
+import { getDashboard, type CategoryPeriod } from "@/app/_data/get-dashboard";
+import CategoryExpensesCard from "./_componets/category-expenses-card";
+import { AiInsightCard, BalanceCard, CreditCardSummary, InstallmentsCard, LatestTransactionsCard, Metrics, MonthlyCommitmentsCard } from "./_componets/dashboard-v2-cards";
 
-
-
-interface HomeProps {
-    searchParams: {
-        month?: string;
-    };
+interface DashboardPageProps {
+  searchParams: Promise<{ month?: string | string[]; categoryPeriod?: string }>;
 }
 
-const Home = async ({ searchParams: { month } }: HomeProps) => {
-    const { userId } = await auth();
-    if (!userId) {
-        redirect("/login");
-    }
-    const currentMonth = String(new Date().getMonth() + 1).padStart(2, "0");
-    const selectedMonth = !month || !isMatch(month, "MM") ? currentMonth : month;
-    const dashboard = await getDashboard(selectedMonth);
-    const userCanAddTransaction = await canUserAddTransaction();
-    return (
-        <>
-            <Navbar />
-            <div className="flex flex-col space-y-4 sm:space-y-6 p-4 sm:p-6 max-w-7xl mx-auto w-full min-w-0">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Dashboard</h1>
-                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                        <AiReportButton month={selectedMonth} />
-                        <TimeSelect />
-                    </div>
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-[2fr,1fr] gap-4 sm:gap-6 min-w-0">
-                    <div className="flex flex-col gap-4 sm:gap-6 min-w-0">
-                        <SummaryCards
-                            month={selectedMonth}
-                            {...dashboard}
-                            userCanAddTransaction={userCanAddTransaction}
-                        />
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 min-w-0">
-                            <div className="col-span-1 min-w-0">
-                                <TransactionsPieChart {...dashboard} />
-                            </div>
-                            <div className="col-span-1 lg:col-span-2 min-w-0">
-                                <ExpensesPerCategory
-                                    expensesPerCategory={dashboard.totalExpensePerCategory}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                    <div className="w-full min-w-0">
-                        <LastTransactions lastTransactions={dashboard.lastTransactions} />
-                    </div>
-                </div>
-            </div>
-        </>
-    );
-};
+export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+  const params = await searchParams;
+  const { userId } = await auth();
+  if (!userId) redirect("/login");
+  const month = resolveYearMonth(params.month);
+  if (params.month !== month) redirect(`/dashboard?month=${month}`);
+  const categoryPeriod: CategoryPeriod = params.categoryPeriod === "three" || params.categoryPeriod === "six" || params.categoryPeriod === "year" ? params.categoryPeriod : "month";
+  const [data, canAdd, client] = await Promise.all([getDashboard(month, categoryPeriod), canUserAddTransaction(), clerkClient()]);
+  const user = await client.users.getUser(userId);
+  const premium = user.publicMetadata?.subscriptionPlan === "premium";
 
-export default Home;
+  return <><Navbar /><main className="mx-auto w-full max-w-[1680px] min-w-0 space-y-4 px-4 py-5 sm:px-6 sm:py-6 xl:px-8">
+    <PageHeader title="Dashboard" />
+    <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-12 lg:gap-5">
+      <div className="order-1 min-w-0 space-y-4 lg:col-span-5"><BalanceCard data={data} canAdd={canAdd} /><Metrics data={data} /></div>
+      <div className="order-3 min-w-0 lg:order-2 lg:col-span-4"><LatestTransactionsCard data={data} /></div>
+      <div className="order-2 min-w-0 lg:order-3 lg:col-span-3"><AiInsightCard data={data} premium={premium} /></div>
+    </div>
+    <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-2 lg:gap-5">
+      <CategoryExpensesCard data={data} period={categoryPeriod} />
+      <InstallmentsCard data={data} />
+      <CreditCardSummary data={data} />
+      <MonthlyCommitmentsCard data={data} />
+    </div>
+  </main></>;
+}

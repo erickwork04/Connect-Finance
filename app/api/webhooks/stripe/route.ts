@@ -68,9 +68,9 @@ export const POST = async (request: Request) => {
       }
     }
     return NextResponse.json({ received: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { error: (error as Error).message },
+      { error: "Could not process Stripe webhook" },
       { status: 500 },
     );
   }

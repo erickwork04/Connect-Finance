@@ -26,6 +26,17 @@ export const TRANSACTION_CATEGORY_LABELS = {
   UTILITY: "Utilidades",
 };
 
+export const TRANSACTION_CATEGORY_COLORS: Record<TransactionCategory, string> = {
+  HOUSING: "#e76b6b",
+  FOOD: "#f3a34c",
+  TRANSPORTATION: "#5e9be9",
+  ENTERTAINMENT: "#ac82e8",
+  HEALTH: "#e77fa5",
+  EDUCATION: "#6fbd85",
+  SALARY: "#76cfa8",
+  OTHER: "#b8a7bd",
+};
+
 export const TRANSACTION_PAYMENT_METHOD_LABELS = {
   BANK_TRANSFER: "Transaferência Bancária",
   BANK_SLIP: "Boleto Bancário",

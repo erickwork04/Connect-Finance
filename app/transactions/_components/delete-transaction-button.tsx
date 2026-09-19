@@ -25,8 +25,8 @@ const DeleteTransactionButton = ({
     try {
       await deleteTransaction({ transactionId });
       toast.success("Transação deletada com sucesso!");
-    } catch (error) {
-      console.error(error);
+    } catch {
+      console.error("Erro ao deletar transação.");
       toast.error("Ocorreu um erro ao deletar a transação");
     }
   };

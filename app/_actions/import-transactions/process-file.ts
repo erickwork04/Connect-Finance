@@ -88,8 +88,8 @@ export async function processImportFile(
         errorMessage: `Formato de arquivo .${extension} não suportado. Por favor, envie um arquivo OFX ou CSV.`,
       };
     }
-  } catch (err) {
-    console.error("Error parsing file:", err);
+  } catch {
+    console.error("Error parsing import file.");
     return {
       success: false,
       transactions: [],

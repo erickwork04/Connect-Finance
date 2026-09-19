@@ -1,17 +1,18 @@
 "use client";
 
-import { Transaction } from "@prisma/client";
 import { ColumnDef } from "@tanstack/react-table";
 import TransactionTypeBadge from "../_components/type-badge";
 
 import {
   TRANSACTION_CATEGORY_LABELS,
+  TRANSACTION_CATEGORY_COLORS,
   TRANSACTION_PAYMENT_METHOD_LABELS,
 } from "@/app/_constanst/transactions";
 import EditTransactionButton from "../_components/edit-transaction-button";
 import DeleteTransactionButton from "../_components/delete-transaction-button";
+import type { TransactionRow } from "../_lib/transaction-row";
 
-export const transactionColumns: ColumnDef<Transaction>[] = [
+export const transactionColumns: ColumnDef<TransactionRow>[] = [
   {
     accessorKey: "name",
     header: "Nome",
@@ -40,14 +41,13 @@ export const transactionColumns: ColumnDef<Transaction>[] = [
     accessorKey: "type",
     header: "Tipo",
     cell: ({ row: { original: transaction } }) => (
-      <TransactionTypeBadge transaction={transaction} />
+      <TransactionTypeBadge type={transaction.type} />
     ),
   },
   {
     accessorKey: "category",
     header: "Categoria",
-    cell: ({ row: { original: transaction } }) =>
-      TRANSACTION_CATEGORY_LABELS[transaction.category],
+    cell: ({ row: { original: transaction } }) => <span className="inline-flex items-center gap-2"><span aria-hidden="true" className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: TRANSACTION_CATEGORY_COLORS[transaction.category] }} />{TRANSACTION_CATEGORY_LABELS[transaction.category]}</span>,
   },
   {
     accessorKey: "paymentMethod",

@@ -40,6 +40,12 @@ export const upsertTransaction = async (params: UpsertTransactionParams) => {
       throw new Error("Unauthorized");
     }
 
+    const linked = await db.monthlyCommitment.findFirst({ where: { userId, transactionId: id }, select: { id: true } }).catch((error: unknown) => {
+      if (typeof error === "object" && error !== null && "code" in error && error.code === "P2021") return null;
+      throw error;
+    });
+    if (linked) throw new Error("Transações vinculadas a compromissos pagos não podem ser editadas.");
+
     await db.transaction.update({
       where: {
         id,
@@ -59,4 +65,5 @@ export const upsertTransaction = async (params: UpsertTransactionParams) => {
   }
 
   revalidatePath("/transactions");
+  revalidatePath("/dashboard");
 };

@@ -89,8 +89,8 @@ export const POST = async (request: Request) => {
     }
 
     return NextResponse.json({ received: true });
-  } catch (error) {
-    console.error("Mercado Pago webhook error:", error);
+  } catch {
+    console.error("Mercado Pago webhook processing failed.");
 
     return NextResponse.json(
       {

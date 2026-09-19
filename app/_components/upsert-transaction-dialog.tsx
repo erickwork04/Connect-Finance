@@ -41,7 +41,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { upsertTransaction } from "../_actions/add-transaction";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -49,6 +49,7 @@ interface UpsertTransactionDialogProps {
   IsOpen: boolean;
   defaultValues?: FormSchema;
   transactionId?: string;
+  initialDate?: Date;
   setIsOpen: (IsOpen: boolean) => void;
 }
 
@@ -83,6 +84,7 @@ const UpsertTransactionDialog = ({
   IsOpen,
   defaultValues,
   transactionId,
+  initialDate,
   setIsOpen,
 }: UpsertTransactionDialogProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -91,12 +93,21 @@ const UpsertTransactionDialog = ({
     defaultValues: defaultValues ?? {
       amount: 10,
       category: TransactionCategory.OTHER,
-      date: new Date(),
+      date: initialDate ?? new Date(),
       name: "",
       paymentMethod: TransactionPaymentMethod.CASH,
       type: TransactionType.EXPENSE,
     },
   });
+  const { reset } = form;
+
+  useEffect(() => {
+    if (IsOpen) {
+      if (defaultValues) reset(defaultValues);
+      else if (initialDate) reset({ amount: 10, category: TransactionCategory.OTHER, date: initialDate,
+        name: "", paymentMethod: TransactionPaymentMethod.CASH, type: TransactionType.EXPENSE });
+    }
+  }, [IsOpen, defaultValues, initialDate, reset]);
 
   const onSubmit = async (data: FormSchema) => {
     try {
@@ -105,8 +116,8 @@ const UpsertTransactionDialog = ({
       toast.success("Transação salva com sucesso!");
       setIsOpen(false);
       form.reset();
-    } catch (error) {
-      console.error("Erro ao salvar transação:", error);
+    } catch {
+      console.error("Erro ao salvar transação.");
       toast.error("Ocorreu um erro ao salvar a transação.");
     } finally {
       setIsSubmitting(false);
@@ -160,6 +171,8 @@ const UpsertTransactionDialog = ({
                   <FormControl>
                     <MoneyInput
                       placeholder="Digite o valor..."
+                      value={field.value}
+                      decimalScale={2}
                       onValueChange={({ floatValue }) =>
                         field.onChange(floatValue)
                       }
@@ -180,7 +193,7 @@ const UpsertTransactionDialog = ({
                   <FormLabel>Tipo</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -208,7 +221,7 @@ const UpsertTransactionDialog = ({
                   <FormLabel>Categoria</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -236,7 +249,7 @@ const UpsertTransactionDialog = ({
                   <FormLabel>Método de pagamento</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>

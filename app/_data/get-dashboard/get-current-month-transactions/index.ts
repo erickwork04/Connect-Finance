@@ -1,6 +1,6 @@
 import { db } from "@/app/_lib/prisma";
 import { auth } from "@clerk/nextjs/server";
-import { endOfMonth, startOfMonth } from "date-fns";
+import { getCurrentMonthRangeLocal } from "@/app/_lib/month-range";
 
 export const getCurrentMonthTransactions = async () => {
   const { userId } = await auth();
@@ -10,10 +10,7 @@ export const getCurrentMonthTransactions = async () => {
   return db.transaction.count({
     where: {
       userId,
-      createdAt: {
-        gte: startOfMonth(new Date()),
-        lt: endOfMonth(new Date()),
-      },
+      createdAt: getCurrentMonthRangeLocal(new Date()),
     },
   });
 };

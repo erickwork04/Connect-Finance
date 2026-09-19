@@ -141,8 +141,8 @@ export function ImportTransactionsDialog({
           setBatchId(result.importBatchId || null);
           setStep("PREVIEW");
           toast.success("Extrato processado com sucesso.");
-        } catch (error) {
-          console.error("Error processing file:", error);
+        } catch {
+          console.error("Error processing file.");
           toast.error("Ocorreu um erro ao processar o arquivo.");
           setStep("UPLOAD");
         }
@@ -252,8 +252,8 @@ export function ImportTransactionsDialog({
         });
         setStep("SUCCESS");
         toast.success(`${result.importedCount} transações importadas com sucesso!`);
-      } catch (err) {
-        console.error("Error importing transactions:", err);
+      } catch {
+        console.error("Error importing transactions.");
         toast.error("Erro inesperado ao importar transações.");
       }
     });

@@ -8,9 +8,9 @@ const isPublicRoute = createRouteMatcher([
   "/terms",
 ]);
 
-export default clerkMiddleware((auth, request) => {
+export default clerkMiddleware(async (auth, request) => {
   if (!isPublicRoute(request)) {
-    const { userId } = auth();
+    const { userId } = await auth();
 
     if (!userId) {
       const loginUrl = new URL("/login", request.url);

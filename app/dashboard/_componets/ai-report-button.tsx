@@ -20,6 +20,7 @@ import { ScrollArea } from "@/app/_components/ui/scroll-area";
 import Markdown from "react-markdown";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { getNavHref } from "@/app/_lib/navigation";
 
 interface AiReportButtonProps {
   month: string;
@@ -42,7 +43,7 @@ const AiReportButton = ({ month }: AiReportButtonProps) => {
           toast.error(result.message, {
             action: {
               label: "Ver Premium",
-              onClick: () => router.push("/subscription"),
+              onClick: () => router.push(getNavHref("/subscription", month)),
             },
           });
 
@@ -65,8 +66,8 @@ const AiReportButton = ({ month }: AiReportButtonProps) => {
       }
 
       setReport(result.report);
-    } catch (error) {
-      console.error("[AI Report Button] Unexpected error:", error);
+    } catch {
+      console.error("[AI Report Button] Unexpected error.");
 
       toast.error(
         "Não foi possível gerar o relatório. Tente novamente em alguns instantes.",

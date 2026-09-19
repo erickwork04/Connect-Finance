@@ -8,7 +8,9 @@ import {
   CreditCard,
 } from "lucide-react";
 import { Button } from "./ui/button";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { resolveYearMonth } from "@/app/_lib/month-range";
 import UpsertTransactionDialog from "./upsert-transaction-dialog";
 import {
   DropdownMenu,
@@ -37,6 +39,11 @@ const AddTransactionButton = ({
   const [upsertIsOpen, setUpsertIsOpen] = useState(false);
   const [importIsOpen, setImportIsOpen] = useState(false);
   const [importMode, setImportMode] = useState<ImportMode>("BANK_STATEMENT");
+  const selectedMonth = resolveYearMonth(useSearchParams().get("month"));
+  const initialDate = useMemo(() => {
+    if (selectedMonth === resolveYearMonth(undefined)) return new Date();
+    return new Date(`${selectedMonth}-01T12:00:00.000Z`);
+  }, [selectedMonth]);
 
   const handleOpenManual = () => {
     setUpsertIsOpen(true);
@@ -134,6 +141,7 @@ const AddTransactionButton = ({
       <UpsertTransactionDialog
         IsOpen={upsertIsOpen}
         setIsOpen={setUpsertIsOpen}
+        initialDate={initialDate}
       />
 
       {/* Modal 2: Importar extrato bancário ou fatura */}

@@ -1,8 +1,8 @@
-import { isMatch } from "date-fns";
+import { YEAR_MONTH_PATTERN } from "@/app/_lib/month-range";
 import { z } from "zod";
 
 export const generateAiReportSchema = z.object({
-  month: z.string().refine((value) => isMatch(value, "MM")),
+  month: z.string().regex(YEAR_MONTH_PATTERN),
 });
 
 export type GenerateAiReportSchema = z.infer<typeof generateAiReportSchema>;

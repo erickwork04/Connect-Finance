@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { SignInButton, SignUpButton } from "@clerk/nextjs";
+import { SignUpButton } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
@@ -40,14 +40,9 @@ export default async function HomePage() {
               </button>
             </SignUpButton>
 
-            <SignInButton
-              mode="modal"
-              forceRedirectUrl="/dashboard"
-            >
-              <button className="rounded-lg border border-zinc-700 px-6 py-3 font-medium text-white transition hover:border-zinc-500 hover:bg-zinc-900">
-                Entrar
-              </button>
-            </SignInButton>
+            <Link href="/login" className="rounded-lg border border-zinc-700 px-6 py-3 font-medium text-white transition hover:border-zinc-500 hover:bg-zinc-900">
+              Entrar
+            </Link>
           </div>
         </div>
       </section>

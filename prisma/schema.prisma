@@ -42,10 +42,95 @@ model Transaction {
   importHash    String?
   importBatchId String?
   importBatch   ImportBatch?             @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+  commitment    MonthlyCommitment?
 
   @@index([userId, importHash])
   @@index([userId, date, amount])
   @@index([userId, importBatchId])
+}
+
+model CreditCard {
+  id         String            @id @default(uuid())
+  userId     String
+  name       String
+  brand      String
+  limitTotal Decimal           @db.Decimal(12, 2)
+  closingDay Int
+  dueDay     Int
+  isPrimary  Boolean           @default(false)
+  isActive   Boolean           @default(true)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  invoices   CardInvoice[]
+  installments InstallmentPlan[]
+
+  @@index([userId, isActive, isPrimary])
+}
+
+model CardInvoice {
+  id        String       @id @default(uuid())
+  userId    String
+  cardId    String
+  month     String       @db.VarChar(7)
+  amount    Decimal      @db.Decimal(12, 2)
+  status    InvoiceStatus @default(OPEN)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  card      CreditCard   @relation(fields: [cardId], references: [id], onDelete: Restrict)
+
+  @@unique([cardId, month])
+  @@index([userId, month])
+}
+
+model InstallmentPlan {
+  id                String            @id @default(uuid())
+  userId            String
+  description       String
+  totalAmount       Decimal           @db.Decimal(12, 2)
+  installmentAmount Decimal           @db.Decimal(12, 2)
+  installmentCount  Int
+  startMonth        String            @db.VarChar(7)
+  cardId            String?
+  status            InstallmentStatus @default(ACTIVE)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  card              CreditCard?       @relation(fields: [cardId], references: [id], onDelete: Restrict)
+
+  @@index([userId, startMonth, status])
+}
+
+model MonthlyCommitment {
+  id            String           @id @default(uuid())
+  userId        String
+  description   String
+  amount        Decimal          @db.Decimal(12, 2)
+  dueDate       DateTime
+  category      TransactionCategory
+  recurring     Boolean          @default(false)
+  status        CommitmentStatus @default(PENDING)
+  transactionId String?          @unique
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  transaction   Transaction?     @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+
+  @@index([userId, dueDate, status])
+}
+
+enum InvoiceStatus {
+  OPEN
+  PAID
+}
+
+enum InstallmentStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum CommitmentStatus {
+  PENDING
+  CONFIRMED
+  PAID
 }
 
 enum TransactionSource {

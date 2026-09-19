@@ -8,6 +8,7 @@ import { auth, clerkClient } from "@clerk/nextjs/server";
 import { GoogleGenAI } from "@google/genai";
 import { GenerateAiReportSchema, generateAiReportSchema } from "./schema";
 import { Transaction } from "@prisma/client";
+import { getYearMonthRangeUtc } from "@/app/_lib/month-range";
 
 type GenerateAiReportResult =
   | {
@@ -64,22 +65,19 @@ export const generateAiReport = async ({
       };
     }
 
-    const currentYear = new Date().getFullYear();
+    const [year, monthNumber] = month.split("-");
 
     const transactions: Transaction[] = await db.transaction.findMany({
       where: {
         userId,
-        date: {
-          gte: new Date(`${currentYear}-${month}-01`),
-          lt: new Date(`${currentYear}-${month}-31`),
-        },
+        date: getYearMonthRangeUtc(month),
       },
     });
 
     if (!transactions || transactions.length === 0) {
       return {
         success: true,
-        report: `### Relatório Financeiro - Mês ${month}/${currentYear}
+        report: `### Relatório Financeiro - Mês ${monthNumber}/${year}
 
 Nenhuma transação foi registrada para este mês até o momento. Comece adicionando seus ganhos e gastos no botão **+ Nova Transação** para gerar insights detalhados sobre sua saúde financeira!`,
       };
@@ -135,11 +133,8 @@ Nenhuma transação foi registrada para este mês até o momento. Comece adicion
             report: response.text,
           };
         }
-      } catch (geminiError) {
-        console.warn(
-          "[AI Studio] Gemini report generation failed:",
-          geminiError,
-        );
+      } catch {
+        console.warn("[AI Studio] Gemini report generation failed.");
       }
     }
 
@@ -218,7 +213,7 @@ Nenhuma transação foi registrada para este mês até o momento. Comece adicion
       (a, b) => b[1] - a[1],
     );
 
-    const fallbackReport = `### 📊 Relatório Financeiro Inteligente (${month}/${currentYear})
+    const fallbackReport = `### 📊 Relatório Financeiro Inteligente (${monthNumber}/${year})
 
 #### 1. Resumo do Mês
 
@@ -266,8 +261,8 @@ ${topCategories
       success: true,
       report: fallbackReport,
     };
-  } catch (error) {
-    console.error("[AI Report] Unexpected error:", error);
+  } catch {
+    console.error("[AI Report] Unexpected error.");
 
     return {
       success: false,

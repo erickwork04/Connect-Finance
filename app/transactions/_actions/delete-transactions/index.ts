@@ -23,11 +23,17 @@ export const deleteTransaction = async ({
     throw new Error("Unauthorized");
   }
 
+  const linked = await db.monthlyCommitment.findFirst({ where: { userId, transactionId }, select: { id: true } }).catch((error: unknown) => {
+    if (typeof error === "object" && error !== null && "code" in error && error.code === "P2021") return null;
+    throw error;
+  });
+  if (linked) throw new Error("Transações vinculadas a compromissos pagos não podem ser excluídas.");
+
   await db.transaction.delete({
     where: {
       id: transactionId,
     },
   });
   revalidatePath("/transactions");
-  revalidatePath("/");
+  revalidatePath("/dashboard");
 };

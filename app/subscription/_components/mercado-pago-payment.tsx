@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
     CardPayment,
     initMercadoPago,
@@ -18,11 +19,15 @@ type MercadoPagoFormData = {
 };
 
 const MercadoPagoPayment = () => {
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const initialization = {
         amount: 19.9,
     };
 
     const handleSubmit = async (formData: MercadoPagoFormData) => {
+        setErrorMessage(null);
+        setIsSubmitting(true);
         try {
 
             const cardTokenId = formData.token;
@@ -39,19 +44,21 @@ const MercadoPagoPayment = () => {
                 window.location.href = result.url;
             }
         } catch (error) {
-            console.error("Erro ao criar assinatura:", error);
+            console.error("Erro ao criar assinatura.");
+            setErrorMessage("Não foi possível iniciar a contratação. Tente novamente.");
             throw error;
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
-    const handleError = async (error: unknown) => {
-        console.error("Erro no formulário do Mercado Pago:", error);
+    const handleError = async () => {
+        console.error("Erro no formulário do Mercado Pago.");
+        setErrorMessage("Não foi possível carregar o formulário de pagamento. Tente novamente.");
     };
 
     const handleReady = async () => {
-        console.log(
-            "Formulário do Mercado Pago carregado.",
-        );
+        setErrorMessage(null);
     };
 
     return (
@@ -62,6 +69,8 @@ const MercadoPagoPayment = () => {
                 onReady={handleReady}
                 onError={handleError}
             />
+            {isSubmitting ? <p role="status" className="mt-3 text-sm text-muted-foreground">Processando solicitação...</p> : null}
+            {errorMessage ? <p role="alert" className="mt-3 text-sm text-red-400">{errorMessage}</p> : null}
         </div>
     );
 };
