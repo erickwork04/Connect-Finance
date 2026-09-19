@@ -1,35 +1,60 @@
 import { clerkClient } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { verifyMercadoPagoSignature } from "./verify-signature";
 
 export const dynamic = "force-dynamic";
 
 export const POST = async (request: Request) => {
-  if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) {
+  const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
+  const webhookSecret = process.env.MERCADO_PAGO_WEBHOOK_SECRET;
+
+  if (!accessToken || !webhookSecret) {
     return NextResponse.json(
-      { error: "Missing Mercado Pago access token" },
-      { status: 400 },
+      { error: "Mercado Pago webhook is not configured" },
+      { status: 503 },
     );
   }
 
+  const url = new URL(request.url);
+  const signedIds = url.searchParams.getAll("data.id");
+  const signedId = signedIds.length === 1 ? signedIds[0] : null;
+  const signatureIsValid = verifyMercadoPagoSignature({
+    signature: request.headers.get("x-signature"),
+    requestId: request.headers.get("x-request-id"),
+    dataId: signedId,
+    secret: webhookSecret,
+  });
+
+  if (!signatureIsValid) {
+    return NextResponse.json({ error: "Invalid webhook signature" }, { status: 401 });
+  }
+
   try {
-    const body = await request.json();
+    const body: unknown = await request.json().catch(() => null);
 
-    console.log("Mercado Pago webhook:", body);
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Invalid webhook body" }, { status: 400 });
+    }
 
-    const type = body.type;
-    const dataId = body.data?.id;
+    const event = body as { type?: unknown; data?: { id?: unknown } };
+    const type = event.type;
+    const dataId = event.data?.id;
 
-    if (!type || !dataId) {
-      return NextResponse.json({ received: true });
+    if (
+      typeof type !== "string" ||
+      (typeof dataId !== "string" && typeof dataId !== "number") ||
+      String(dataId).toLowerCase() !== signedId?.toLowerCase()
+    ) {
+      return NextResponse.json({ error: "Invalid webhook body" }, { status: 400 });
     }
 
     switch (type) {
       case "subscription_preapproval": {
         const response = await fetch(
-          `https://api.mercadopago.com/preapproval/${dataId}`,
+          `https://api.mercadopago.com/preapproval/${encodeURIComponent(signedId)}`,
           {
             headers: {
-              Authorization: `Bearer ${process.env.MERCADO_PAGO_ACCESS_TOKEN}`,
+              Authorization: `Bearer ${accessToken}`,
             },
           },
         );
@@ -52,40 +77,47 @@ export const POST = async (request: Request) => {
         }
 
         const client = await clerkClient();
+        const user = await client.users.getUser(clerkUserId);
+        const currentSubscriptionId = user.privateMetadata
+          .mercadoPagoSubscriptionId;
 
         if (subscription.status === "authorized") {
-          await client.users.updateUser(clerkUserId, {
-            privateMetadata: {
-              mercadoPagoSubscriptionId: subscription.id,
-            },
+          if (
+            currentSubscriptionId !== subscription.id ||
+            user.publicMetadata.subscriptionPlan !== "premium"
+          ) {
+            await client.users.updateUser(clerkUserId, {
+              privateMetadata: {
+                mercadoPagoSubscriptionId: subscription.id,
+              },
 
-            publicMetadata: {
-              subscriptionPlan: "premium",
-            },
-          });
+              publicMetadata: {
+                subscriptionPlan: "premium",
+              },
+            });
+          }
         }
 
         if (
           subscription.status === "cancelled" ||
           subscription.status === "paused"
         ) {
-          await client.users.updateUser(clerkUserId, {
-            privateMetadata: {
-              mercadoPagoSubscriptionId: null,
-            },
+          if (currentSubscriptionId === subscription.id) {
+            await client.users.updateUser(clerkUserId, {
+              privateMetadata: {
+                mercadoPagoSubscriptionId: null,
+              },
 
-            publicMetadata: {
-              subscriptionPlan: null,
-            },
-          });
+              publicMetadata: {
+                subscriptionPlan: null,
+              },
+            });
+          }
         }
 
         break;
       }
 
-      default:
-        console.log(`Evento não tratado: ${type}`);
-        break;
     }
 
     return NextResponse.json({ received: true });
@@ -93,12 +125,7 @@ export const POST = async (request: Request) => {
     console.error("Mercado Pago webhook error:", error);
 
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Unknown webhook error",
-      },
+      { error: "Could not process Mercado Pago webhook" },
       { status: 500 },
     );
   }
