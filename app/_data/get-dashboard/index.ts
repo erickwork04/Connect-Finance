@@ -3,6 +3,7 @@ import { TransactionType, type TransactionCategory } from "@prisma/client";
 import { db } from "@/app/_lib/prisma";
 import { getYearMonthRangeUtc, monthsBetween, shiftYearMonth } from "@/app/_lib/month-range";
 import { availableAfterCommitments, creditLimit, monthlyBalance, outstandingCommitmentAmounts } from "@/app/_lib/finance";
+import { ensureCommitmentOccurrences } from "@/app/_lib/commitments";
 
 export type CategoryPeriod = "month" | "three" | "six" | "year";
 export type DashboardData = Awaited<ReturnType<typeof getDashboard>>;
@@ -26,6 +27,7 @@ export async function getDashboard(month: string, categoryPeriod: CategoryPeriod
   if (!userId) throw new Error("Unauthorized");
 
   const previousMonth = shiftYearMonth(month, -1);
+  await Promise.all([ensureCommitmentOccurrences(userId, month), ensureCommitmentOccurrences(userId, previousMonth)]);
   const currentRange = getYearMonthRangeUtc(month);
   const previousRange = getYearMonthRangeUtc(previousMonth);
   const categoryRange = {
@@ -38,8 +40,8 @@ export async function getDashboard(month: string, categoryPeriod: CategoryPeriod
     db.transaction.groupBy({ by: ["type"], where: { userId, date: previousRange }, _sum: { amount: true } }),
     db.transaction.groupBy({ by: ["category"], where: { userId, date: categoryRange, type: TransactionType.EXPENSE }, _sum: { amount: true } }),
     db.transaction.findMany({ where: { userId, date: currentRange }, orderBy: [{ date: "desc" }, { createdAt: "desc" }], take: 10 }),
-    optionalTable(db.monthlyCommitment.findMany({ where: { userId, dueDate: currentRange }, orderBy: { dueDate: "asc" } })),
-    optionalTable(db.monthlyCommitment.findMany({ where: { userId, dueDate: previousRange, recurring: true } })),
+    optionalTable(db.monthlyCommitment.findMany({ where: { userId, dueDate: currentRange, deletedAt: null }, orderBy: { dueDate: "asc" } })),
+    optionalTable(db.monthlyCommitment.findMany({ where: { userId, dueDate: previousRange, recurring: true, deletedAt: null } })),
     optionalTable(db.creditCard.findMany({ where: { userId, isActive: true }, include: { invoices: { where: { OR: [{ month }, { month: shiftYearMonth(month, 1) }, { status: "OPEN" }] } } }, orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }] })),
     optionalTable(db.installmentPlan.findMany({ where: { userId, status: "ACTIVE", startMonth: { lte: month } }, include: { card: { select: { name: true } } }, orderBy: { createdAt: "desc" } })),
   ]);

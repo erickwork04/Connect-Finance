@@ -1,89 +1,53 @@
 "use client";
 
-import { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
+import { TRANSACTION_PAYMENT_METHOD_LABELS } from "@/app/_constanst/transactions";
+import type { TransactionRow } from "../_lib/transaction-row";
 import TransactionTypeBadge from "../_components/type-badge";
-
-import {
-  TRANSACTION_CATEGORY_LABELS,
-  TRANSACTION_CATEGORY_COLORS,
-  TRANSACTION_PAYMENT_METHOD_LABELS,
-} from "@/app/_constanst/transactions";
 import EditTransactionButton from "../_components/edit-transaction-button";
 import DeleteTransactionButton from "../_components/delete-transaction-button";
-import type { TransactionRow } from "../_lib/transaction-row";
+import { TransactionAmount, TransactionCategoryLabel, TransactionDate, TransactionSourceBadge } from "../_components/transaction-row-parts";
 
 export const transactionColumns: ColumnDef<TransactionRow>[] = [
   {
-    accessorKey: "name",
-    header: "Nome",
-    cell: ({ row: { original: transaction } }) => (
-      <div className="flex items-center gap-1.5">
-        <span className="font-medium">{transaction.name}</span>
-        {transaction.source === "OFX" && (
-          <span className="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            OFX
-          </span>
-        )}
-        {transaction.source === "CARD_INVOICE" && (
-          <span className="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
-            Fatura
-          </span>
-        )}
-        {transaction.source === "CSV" && (
-          <span className="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">
-            CSV
-          </span>
-        )}
-      </div>
-    ),
+    accessorKey: "date",
+    header: "Data",
+    cell: ({ row: { original } }) => <TransactionDate date={original.date} />,
   },
   {
-    accessorKey: "type",
-    header: "Tipo",
-    cell: ({ row: { original: transaction } }) => (
-      <TransactionTypeBadge type={transaction.type} />
-    ),
+    accessorKey: "name",
+    header: "Descrição",
+    cell: ({ row: { original } }) => <div className="flex min-w-0 items-center gap-2">
+      <span className="min-w-0 max-w-[220px] truncate font-medium 2xl:max-w-[320px]" title={original.name}>{original.name}</span>
+      <TransactionSourceBadge source={original.source} />
+    </div>,
   },
   {
     accessorKey: "category",
     header: "Categoria",
-    cell: ({ row: { original: transaction } }) => <span className="inline-flex items-center gap-2"><span aria-hidden="true" className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: TRANSACTION_CATEGORY_COLORS[transaction.category] }} />{TRANSACTION_CATEGORY_LABELS[transaction.category]}</span>,
+    cell: ({ row: { original } }) => <TransactionCategoryLabel category={original.category} />,
   },
   {
     accessorKey: "paymentMethod",
-    header: "Método de Pagamento",
-    cell: ({ row: { original: transaction } }) =>
-      TRANSACTION_PAYMENT_METHOD_LABELS[transaction.paymentMethod],
+    header: "Método",
+    cell: ({ row: { original } }) => <span className="block truncate text-xs text-muted-foreground" title={TRANSACTION_PAYMENT_METHOD_LABELS[original.paymentMethod]}>{TRANSACTION_PAYMENT_METHOD_LABELS[original.paymentMethod]}</span>,
   },
   {
-    accessorKey: "date",
-    header: "Data",
-    cell: ({ row: { original: transaction } }) =>
-      new Date(transaction.date).toLocaleDateString("pt-BR", {
-        day: "2-digit",
-        month: "long",
-        year: "numeric",
-      }),
+    accessorKey: "type",
+    header: "Tipo",
+    cell: ({ row: { original } }) => <TransactionTypeBadge type={original.type} />,
   },
   {
     accessorKey: "amount",
-    header: "Valor",
-    cell: ({ row: { original: transaction } }) =>
-      new Intl.NumberFormat("pt-BR", {
-        style: "currency",
-        currency: "BRL",
-      }).format(Number(transaction.amount)),
+    header: () => <div className="text-right">Valor</div>,
+    cell: ({ row: { original } }) => <div className="whitespace-nowrap text-right"><TransactionAmount amount={original.amount} type={original.type} /></div>,
   },
   {
-    accessorKey: "actions",
+    id: "actions",
     header: "Ações",
-    cell: ({ row: { original: transaction } }) => {
-      return (
-        <div className="space-x-1">
-          <EditTransactionButton transaction={transaction} />
-          <DeleteTransactionButton transactionId={transaction.id} />
-        </div>
-      );
-    },
+    cell: ({ row: { original } }) => <div className="flex items-center justify-end gap-1">
+      <EditTransactionButton transaction={original} />
+      <DeleteTransactionButton transactionId={original.id} />
+    </div>,
   },
 ];

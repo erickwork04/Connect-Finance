@@ -91,7 +91,7 @@ const UpsertTransactionDialog = ({
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: defaultValues ?? {
-      amount: 10,
+      amount: undefined,
       category: TransactionCategory.OTHER,
       date: initialDate ?? new Date(),
       name: "",
@@ -104,7 +104,7 @@ const UpsertTransactionDialog = ({
   useEffect(() => {
     if (IsOpen) {
       if (defaultValues) reset(defaultValues);
-      else if (initialDate) reset({ amount: 10, category: TransactionCategory.OTHER, date: initialDate,
+      else if (initialDate) reset({ amount: undefined, category: TransactionCategory.OTHER, date: initialDate,
         name: "", paymentMethod: TransactionPaymentMethod.CASH, type: TransactionType.EXPENSE });
     }
   }, [IsOpen, defaultValues, initialDate, reset]);
@@ -170,14 +170,12 @@ const UpsertTransactionDialog = ({
                   <FormLabel>Valor</FormLabel>
                   <FormControl>
                     <MoneyInput
-                      placeholder="Digite o valor..."
+                      placeholder="R$ 0,00"
                       value={field.value}
-                      decimalScale={2}
-                      onValueChange={({ floatValue }) =>
-                        field.onChange(floatValue)
-                      }
+                      onChange={field.onChange}
                       onBlur={field.onBlur}
                       disabled={field.disabled}
+                      error={!!form.formState.errors.amount}
                     />
                   </FormControl>
                   <FormMessage />

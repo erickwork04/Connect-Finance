@@ -6,7 +6,17 @@ import {
   getYearMonthRangeUtc,
   resolveYearMonth,
   formatYearMonthPtBr,
+  monthlyDueDate,
 } from "./month-range.ts";
+
+test("recorrência mensal preserva o dia original e limita meses curtos", () => {
+  assert.equal(monthlyDueDate("2026-01", 31).toISOString(), "2026-01-31T12:00:00.000Z");
+  assert.equal(monthlyDueDate("2026-02", 31).toISOString(), "2026-02-28T12:00:00.000Z");
+  assert.equal(monthlyDueDate("2026-03", 31).toISOString(), "2026-03-31T12:00:00.000Z");
+  assert.equal(monthlyDueDate("2028-02", 29).toISOString(), "2028-02-29T12:00:00.000Z");
+  assert.throws(() => monthlyDueDate("2026-13", 10), RangeError);
+  assert.throws(() => monthlyDueDate("2026-02", 32), RangeError);
+});
 
 test("inclui todo fevereiro em ano bissexto e exclui 1º de março", () => {
   const { gte, lt } = getMonthRangeUtc(2024, "02");

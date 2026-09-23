@@ -61,6 +61,16 @@ export function shiftYearMonth(yearMonth: string, offset: number): string {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
+/** A due day of 29–31 uses the last day in shorter months, without changing the series day. */
+export function monthlyDueDate(month: string, dueDay: number): Date {
+  if (!YEAR_MONTH_PATTERN.test(month) || !Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31) {
+    throw new RangeError("Invalid recurring commitment date");
+  }
+  const [year, monthNumber] = month.split("-").map(Number);
+  const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+  return new Date(Date.UTC(year, monthNumber - 1, Math.min(dueDay, lastDay), 12));
+}
+
 export function monthsBetween(startMonth: string, endMonth: string): number {
   if (!YEAR_MONTH_PATTERN.test(startMonth) || !YEAR_MONTH_PATTERN.test(endMonth)) {
     throw new RangeError("Invalid year-month");

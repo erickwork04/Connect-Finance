@@ -15,15 +15,17 @@ interface DatePickerProps {
 }
 
 export const DatePicker = ({ value, onChange, disabled = false }: DatePickerProps) => {
+  const [open, setOpen] = React.useState(false);
+
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           type="button"
           disabled={disabled}
           variant={"outline"}
           className={cn(
-            "w-full justify-start text-left font-normal",
+            "min-h-11 w-full justify-start text-left font-normal sm:min-h-10",
             !value && "text-muted-foreground",
           )}
         >
@@ -43,7 +45,10 @@ export const DatePicker = ({ value, onChange, disabled = false }: DatePickerProp
         <Calendar
           mode="single"
           selected={value}
-          onSelect={onChange}
+          onSelect={(date) => {
+            onChange?.(date);
+            if (date) setOpen(false);
+          }}
           autoFocus
         />
       </PopoverContent>

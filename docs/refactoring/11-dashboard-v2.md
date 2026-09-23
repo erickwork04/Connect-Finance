@@ -9,7 +9,7 @@ Implementar um painel financeiro amplo, responsivo e orientado pelo mês da URL.
 - `month=YYYY-MM` é a fonte temporal nas rotas financeiras. `MonthSelector` fica na navbar e altera o parâmetro da rota atual. A navegação entre Dashboard, Transações, Cartões, Metas e Assinatura preserva o mês; a rota filha `/dashboard/commitments` permanece na aba Dashboard.
 - Ao abrir o cadastro manual de transação em um mês histórico, a data inicial do formulário é o primeiro dia daquele mês; no mês atual, é hoje. O usuário ainda pode escolher outra data.
 - Dashboard, Transações e Cartões canonicalizam `month`; relatório IA recebe o mesmo valor. O filtro `categoryPeriod` afeta somente Gastos por categoria: mês escolhido, três/seis meses até ele ou janeiro até ele.
-- `getDashboard` consulta mês atual, imediatamente anterior, categorias, seis transações recentes e os novos domínios em paralelo. Valores decimais são convertidos para número apenas na apresentação; o banco continua usando `Decimal`.
+- `getDashboard` consulta mês atual, imediatamente anterior, categorias, até dez transações recentes e os novos domínios em paralelo. Valores decimais são convertidos para número apenas na apresentação; o banco continua usando `Decimal`.
 - A página mantém autenticação Clerk no servidor. O relatório completo só é gerado sob clique e conserva a verificação Premium existente no servidor. O card gratuito mostra acesso Premium sem chamar IA.
 - O grid desktop usa 12 colunas: Saldo, transações e insight no topo; métricas abaixo do Saldo; categorias/parcelas e cartão/compromissos nas linhas seguintes. Em mobile a ordem é Saldo, quatro métricas, insight, transações, categorias, parcelas, cartão, compromissos.
 
@@ -45,3 +45,5 @@ Implementar um painel financeiro amplo, responsivo e orientado pelo mês da URL.
 - Recorrência é materializada em 12 meses no cadastro; não existe renovação automática após esse horizonte, nem edição/cancelamento em série. Faturas e planos são lançamentos explícitos, sem conciliação automática com importações. Esta escolha evita matching agressivo e duplo impacto financeiro.
 - A interface trata `P2021` das novas tabelas como indisponibilidade durante rollout; outras falhas de consulta continuam propagadas. A classificação Premium e webhooks foram preservados.
 - **PENDENTE — validação com credenciais/ambiente real do Mercado Pago.** Não houve homologação ou deploy nesta tarefa.
+
+O refino posterior de densidade visual, modais e entradas financeiras está documentado em [12 — Refino desktop e formulários](12-refino-desktop-formularios.md). As medições e resultados de teste daquele documento substituem os números da validação histórica acima.

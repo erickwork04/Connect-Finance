@@ -16,9 +16,10 @@ const EditTransactionButton = ({ transaction }: EditTransactionButtonProps) => {
   return (
     <>
       <Button
+        aria-label={`Editar ${transaction.name}`}
         variant="ghost"
         size="icon"
-        className="text-muted-foreground"
+        className="h-11 w-11 text-muted-foreground hover:text-foreground sm:h-9 sm:w-9"
         onClick={() => setDialogIsOpen(true)}
       >
         <PencilIcon />
