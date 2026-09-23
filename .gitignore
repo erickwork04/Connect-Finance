@@ -36,6 +36,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+scripts/reset-user-data.ts
 
 # docker
 .postgres-data.env
