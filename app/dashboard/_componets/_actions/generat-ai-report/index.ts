@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/app/_lib/prisma";
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 
 // import OpenAI from "openai";
 
@@ -9,6 +9,7 @@ import { GoogleGenAI } from "@google/genai";
 import { GenerateAiReportSchema, generateAiReportSchema } from "./schema";
 import { Transaction } from "@prisma/client";
 import { getYearMonthRangeUtc } from "@/app/_lib/month-range";
+import { getPlanPermissions } from "@/app/_lib/plan-permissions";
 
 type GenerateAiReportResult =
   | {
@@ -49,14 +50,9 @@ export const generateAiReport = async ({
       };
     }
 
-    const client = await clerkClient();
+    const permissions = await getPlanPermissions(userId);
 
-    const user = await client.users.getUser(userId);
-
-    const hasPremiumPlan =
-      user.publicMetadata?.subscriptionPlan === "premium";
-
-    if (!hasPremiumPlan) {
+    if (!permissions.isPremium) {
       return {
         success: false,
         code: "SUBSCRIPTION_REQUIRED",

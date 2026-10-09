@@ -1,4 +1,5 @@
 import { TransactionPaymentMethod, TransactionType } from "@prisma/client";
+import type { ImportInstallmentInfo } from "./types";
 
 export interface RawParsedTransaction {
   date: Date;
@@ -8,6 +9,7 @@ export interface RawParsedTransaction {
   type: TransactionType;
   paymentMethod: TransactionPaymentMethod;
   externalId?: string;
+  installmentInfo?: ImportInstallmentInfo;
 }
 
 /**

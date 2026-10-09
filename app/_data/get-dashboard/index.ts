@@ -3,6 +3,7 @@ import { TransactionType, type TransactionCategory } from "@prisma/client";
 import { db } from "@/app/_lib/prisma";
 import { getYearMonthRangeUtc, monthsBetween, shiftYearMonth } from "@/app/_lib/month-range";
 import { availableAfterCommitments, creditLimit, monthlyBalance, outstandingCommitmentAmounts } from "@/app/_lib/finance";
+import { invoiceRemainingAmount } from "@/app/_lib/card-invoice";
 import { ensureCommitmentOccurrences } from "@/app/_lib/commitments";
 
 export type CategoryPeriod = "month" | "three" | "six" | "year";
@@ -10,7 +11,7 @@ export type DashboardData = Awaited<ReturnType<typeof getDashboard>>;
 
 function optionalTable<T>(promise: Promise<T>): Promise<T | null> {
   return promise.catch((error: unknown) => {
-    if (typeof error === "object" && error !== null && "code" in error && error.code === "P2021") return null;
+    if (typeof error === "object" && error !== null && "code" in error && (error.code === "P2021" || error.code === "P2022")) return null;
     throw error;
   });
 }
@@ -64,7 +65,11 @@ export async function getDashboard(month: string, categoryPeriod: CategoryPeriod
   const unpaidAmounts = outstandingCommitmentAmounts(commitments?.map((item) => ({ amount: Number(item.amount), status: item.status, transactionId: item.transactionId })) ?? []);
   const categoryTotal = categories.reduce((amount, item) => amount + Number(item._sum.amount ?? 0), 0);
   const primaryCard = cards?.[0];
-  const used = primaryCard?.invoices.filter((invoice) => invoice.status === "OPEN").reduce((amount, invoice) => amount + Number(invoice.amount), 0) ?? 0;
+  const currentInvoice = primaryCard?.invoices.find((invoice) => invoice.month === month);
+  const nextInvoice = primaryCard?.invoices.find((invoice) => invoice.month === shiftYearMonth(month, 1));
+  const used = primaryCard?.invoices.reduce((amount, invoice) => amount + invoiceRemainingAmount(
+    Number(invoice.amount), Number(invoice.paidAmount), invoice.status,
+  ), 0) ?? 0;
   const cardLimit = creditLimit(Number(primaryCard?.limitTotal ?? 0), used);
 
   return {
@@ -97,8 +102,8 @@ export async function getDashboard(month: string, categoryPeriod: CategoryPeriod
       limitTotal: Number(primaryCard.limitTotal), limitUsed: used,
       limitAvailable: cardLimit.available, usedPercent: cardLimit.percent,
       closingDay: primaryCard.closingDay, dueDay: primaryCard.dueDay,
-      currentInvoice: Number(primaryCard.invoices.find((invoice) => invoice.month === month)?.amount ?? 0),
-      nextInvoice: Number(primaryCard.invoices.find((invoice) => invoice.month === shiftYearMonth(month, 1))?.amount ?? 0),
+      currentInvoice: currentInvoice ? invoiceRemainingAmount(Number(currentInvoice.amount), Number(currentInvoice.paidAmount), currentInvoice.status) : 0,
+      nextInvoice: nextInvoice ? invoiceRemainingAmount(Number(nextInvoice.amount), Number(nextInvoice.paidAmount), nextInvoice.status) : 0,
     } : null,
     cardsAvailable: cards !== null,
     installments: installments?.flatMap((item) => {

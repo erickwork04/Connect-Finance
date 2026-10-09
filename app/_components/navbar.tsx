@@ -2,100 +2,169 @@
 
 import { useState } from "react";
 import { UserButton } from "@clerk/nextjs";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import {
+  ArrowLeftRight,
+  Building2,
+  CalendarClock,
+  CreditCard,
+  House,
+  Menu,
+  Sparkles,
+  Target,
+  WalletCards,
+  X,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { getNavHref, isNavActive, NAV_ITEMS } from "../_lib/navigation";
 import MonthSelector from "./month-selector";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "./ui/dialog";
 
-const Navbar = () => {
+const NAV_ICONS: Record<(typeof NAV_ITEMS)[number]["href"], LucideIcon> = {
+  "/dashboard": House,
+  "/transactions": ArrowLeftRight,
+  "/banks": Building2,
+  "/cards": CreditCard,
+  "/installments": CalendarClock,
+  "/goals": Target,
+  "/subscription": Sparkles,
+};
+
+function NavigationLinks({
+  pathname,
+  month,
+  onNavigate,
+}: {
+  pathname: string;
+  month: string | null;
+  onNavigate?: () => void;
+}) {
+  return (
+    <div className="space-y-1">
+      {NAV_ITEMS.map((item, index) => {
+        const Icon = NAV_ICONS[item.href];
+        const active = isNavActive(pathname, item.href);
+        const showSettingsLabel = item.section === "settings" &&
+          NAV_ITEMS[index - 1]?.section !== "settings";
+
+        return (
+          <div key={item.href}>
+            {showSettingsLabel ? (
+              <p className="mb-2 mt-7 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                Configurações
+              </p>
+            ) : null}
+            <Link
+              href={getNavHref(item.href, month)}
+              aria-current={active ? "page" : undefined}
+              onClick={onNavigate}
+              className={`group flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
+                active
+                  ? "bg-slate-800 text-white shadow-sm"
+                  : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
+              }`}
+            >
+              <Icon
+                aria-hidden="true"
+                className={`h-[18px] w-[18px] shrink-0 ${active ? "text-blue-400" : "text-slate-500 group-hover:text-slate-300"}`}
+              />
+              <span>{item.label}</span>
+            </Link>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Brand({ month }: { month: string | null }) {
+  return (
+    <Link href={getNavHref("/dashboard", month)} className="flex w-fit items-center gap-3 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500 text-white shadow-lg shadow-blue-950/40">
+        <WalletCards aria-hidden="true" className="h-5 w-5" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-bold tracking-tight text-white">Connect Finance</span>
+        <span className="mt-0.5 block text-xs text-slate-500">Gestão financeira</span>
+      </span>
+    </Link>
+  );
+}
+
+export default function Navbar() {
   const pathname = usePathname();
   const month = useSearchParams().get("month");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <nav className="relative z-30 border-b border-border bg-background">
-      <div className="mx-auto flex max-w-[1680px] flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6 xl:px-8">
-        {/* ESQUERDA: Logo e links desktop */}
-        <div className="flex min-w-0 items-center gap-4 xl:gap-7">
-          <Link href={getNavHref("/dashboard", month)} className="shrink-0">
-            <div className="flex h-12 w-[125px] items-center overflow-hidden sm:w-[170px] lg:w-[150px] xl:w-[185px]">
-              <Image
-                src="/logo.png"
-                width={500}
-                height={150}
-                alt="Connect Finance"
-                priority
-                className="h-auto w-full object-contain"
-              />
+    <>
+      <aside className="connect-sidebar fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-slate-800 bg-[#0e1319] px-4 pb-6 pt-7 lg:flex lg:flex-col">
+        <div className="px-2">
+          <Brand month={month} />
+        </div>
+        <nav aria-label="Navegação principal" className="mt-8 flex-1 overflow-y-auto">
+          <NavigationLinks pathname={pathname} month={month} />
+        </nav>
+      </aside>
+
+      <header className="fixed inset-x-0 top-0 z-30 h-28 border-b border-slate-800 bg-[#171c23] px-4 sm:px-6 md:h-16 lg:left-64 lg:px-8">
+        <div className="flex h-16 items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              aria-label="Abrir navegação"
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-navigation"
+              onClick={() => setMobileMenuOpen(true)}
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-700 text-slate-300 transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 lg:hidden"
+            >
+              <Menu aria-hidden="true" className="h-5 w-5" />
+            </button>
+          <div className="lg:hidden"><Brand month={month} /></div>
+            <div className="hidden w-[220px] md:block lg:w-[240px]">
+              <MonthSelector />
             </div>
-          </Link>
-
-          {/* Links Desktop */}
-          <div className="hidden lg:flex items-center gap-3 xl:gap-5">
-            {NAV_ITEMS.map((link) => (
-              <Link
-                key={link.href}
-                href={getNavHref(link.href, month)}
-                aria-current={isNavActive(pathname, link.href) ? "page" : undefined}
-                className={
-                  isNavActive(pathname, link.href)
-                    ? "whitespace-nowrap font-bold text-primary"
-                    : "whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground"
-                }
-              >
-                {link.label}
-              </Link>
-            ))}
+          </div>
+          <div className="flex shrink-0 items-center gap-3">
+            <UserButton />
           </div>
         </div>
+        <div className="pb-3 md:hidden">
+          <MonthSelector />
+        </div>
+      </header>
 
-        {/* DIREITA: Avatar e menu hamburguer mobile */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <div className="hidden w-[205px] sm:block"><MonthSelector /></div>
-          <div className="[&_.cl-userButtonOuterIdentifier]:hidden xl:[&_.cl-userButtonOuterIdentifier]:block">
-            <UserButton showName />
+      <Dialog open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+        <DialogContent
+          id="mobile-navigation"
+          className="!left-0 !top-0 !h-dvh !w-[min(84vw,18rem)] !max-w-none !translate-x-0 !translate-y-0 !rounded-none border-y-0 border-l-0 border-r border-slate-800 bg-[#0e1319] p-5 pt-7"
+        >
+          <DialogTitle className="sr-only">Menu de navegação</DialogTitle>
+          <div className="pr-10"><Brand month={month} /></div>
+          <nav aria-label="Navegação principal" className="mt-5 overflow-y-auto">
+            <NavigationLinks
+              pathname={pathname}
+              month={month}
+              onNavigate={() => setMobileMenuOpen(false)}
+            />
+          </nav>
+          <div className="mt-auto border-t border-slate-800 pt-4">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm text-slate-400 hover:bg-slate-900 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+            >
+              <X aria-hidden="true" className="h-4 w-4" />
+              Fechar menu
+            </button>
           </div>
-
-          {/* Botão Hambúrguer Mobile */}
-          <button
-            type="button"
-            id="mobile-nav-toggle"
-            aria-label={mobileMenuOpen ? "Fechar menu" : "Abrir menu"}
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground lg:hidden"
-          >
-            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-        </div>
-      </div>
-      <div className="px-4 pb-3 sm:hidden"><MonthSelector /></div>
-
-      {/* Menu Mobile Dropdown */}
-      {mobileMenuOpen && (
-        <div className="border-t border-border bg-background px-4 py-3 lg:hidden space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
-          {NAV_ITEMS.map((link) => {
-            const isActive = isNavActive(pathname, link.href);
-            return (
-              <Link
-                key={link.href}
-                href={getNavHref(link.href, month)}
-                aria-current={isActive ? "page" : undefined}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex h-11 items-center rounded-md px-3 text-sm font-medium transition-colors ${isActive
-                  ? "bg-primary/10 text-primary font-bold"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                  }`}
-              >
-                {link.label}
-              </Link>
-            );
-          })}
-        </div>
-      )}
-    </nav>
+        </DialogContent>
+      </Dialog>
+    </>
   );
-};
-
-export default Navbar;
+}

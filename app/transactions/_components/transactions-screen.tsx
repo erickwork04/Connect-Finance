@@ -55,7 +55,7 @@ function MobileTransactionCard({ transaction }: { transaction: TransactionRow })
   </article>;
 }
 
-export default function TransactionsScreen({ rows, month, canAdd }: { rows: TransactionRow[]; month: string; canAdd: boolean }) {
+export default function TransactionsScreen({ rows, month, canAdd, canImportFiles = false }: { rows: TransactionRow[]; month: string; canAdd: boolean; canImportFiles?: boolean }) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("all");
   const [period, setPeriod] = useState<LocalPeriod>("month");
@@ -71,7 +71,7 @@ export default function TransactionsScreen({ rows, month, canAdd }: { rows: Tran
           <div className="relative min-w-0"><Search aria-hidden="true" className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground sm:top-3" /><Input aria-label="Buscar transações" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar transações..." className="h-11 min-w-0 pl-9 sm:h-10" /></div>
           <Select value={category} onValueChange={setCategory}><SelectTrigger aria-label="Categoria" className="h-11 min-w-0 sm:h-10"><SelectValue placeholder="Todas as categorias" /></SelectTrigger><SelectContent><SelectItem value="all">Todas as categorias</SelectItem>{TRANSACTION_CATEGORY_OPTIONS.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select>
           <Select value={period} onValueChange={(value) => setPeriod(value as LocalPeriod)}><SelectTrigger aria-label="Período dentro do mês selecionado" className="h-11 min-w-0 sm:h-10"><SelectValue placeholder="Todo o mês" /></SelectTrigger><SelectContent>{periods.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select>
-          <div className="min-w-0 sm:col-span-2 xl:col-span-1 xl:justify-self-end"><AddTransactionButton userCanAddTransaction={canAdd} /></div>
+          <div className="min-w-0 sm:col-span-2 xl:col-span-1 xl:justify-self-end"><AddTransactionButton userCanAddTransaction={canAdd} canImportFiles={canImportFiles} /></div>
         </section>
         <section aria-label="Lista de transações" className="min-w-0">
           <div className="hidden min-w-0 lg:block [&_table]:table-fixed [&_th]:h-10 [&_th]:px-2.5 [&_th]:text-xs [&_td]:px-2.5 [&_td]:py-2 [&_th:nth-child(1)]:w-[100px] [&_th:nth-child(3)]:w-[130px] [&_th:nth-child(4)]:w-[116px] [&_th:nth-child(5)]:w-[98px] [&_th:nth-child(6)]:w-[145px] [&_th:nth-child(7)]:w-[86px]">

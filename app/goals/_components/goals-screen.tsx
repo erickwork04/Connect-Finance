@@ -14,7 +14,7 @@ export default function GoalsScreen({ goals }: GoalsScreenProps) {
   return (
     <>
       <Navbar />
-      <main className="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-5 p-4 sm:gap-6 sm:p-6">
+      <main className="app-shell-content mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-5 p-4 sm:gap-6 sm:p-6">
         <PageHeader
           title="Metas"
           actions={

@@ -12,6 +12,7 @@ import {
   ProcessFileResult,
 } from "@/app/_lib/import/types";
 import { TransactionSource } from "@prisma/client";
+import { getPlanPermissions } from "@/app/_lib/plan-permissions";
 
 const THREE_MINUTES_MS = 3 * 60 * 1000;
 
@@ -51,6 +52,19 @@ export async function processImportFile(
       possibleDuplicateCount: 0,
       alreadyImportedCount: 0,
       errorMessage: "Usuário não autenticado.",
+    };
+  }
+
+  const permissions = await getPlanPermissions(userId);
+  if (!permissions.canImportFiles) {
+    return {
+      success: false,
+      transactions: [],
+      totalFound: 0,
+      newCount: 0,
+      possibleDuplicateCount: 0,
+      alreadyImportedCount: 0,
+      errorMessage: "Importação exclusiva do Premium. Assine o Premium para importar faturas e arquivos bancários.",
     };
   }
 
@@ -325,6 +339,7 @@ export async function processImportFile(
       date: item.date.toISOString(),
       time: item.time,
       name: item.name,
+      installmentInfo: item.installmentInfo,
       amount: item.amount,
       type: item.type,
       suggestedCategory: suggestedCat,

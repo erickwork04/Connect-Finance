@@ -14,7 +14,7 @@ O mês escolhido na barra superior é preservado quando você navega, mas **não
 
 ### Adquirir plano
 
-Aparece no card Premium para quem está no plano gratuito. Ao tocar, a página carrega o formulário de pagamento no próprio card. Preencha os dados solicitados pelo formulário e siga as orientações exibidas. Durante a solicitação, pode aparecer **Processando solicitação...**; se falhar, a página mostra uma mensagem de erro. Quando o serviço fornece a próxima etapa, o navegador é encaminhado para ela. **Este fluxo ainda não foi homologado com um pagamento real; não considere a assinatura ativada apenas por abrir ou enviar o formulário.**
+Aparece no card Premium para quem está no plano gratuito. Antes de abrir o formulário, você pode informar um cupom e tocar em **Aplicar**. O resumo mostra o desconto e o total de hoje. Se o cupom valer só no primeiro ciclo, o valor dos meses seguintes aparece explicitamente; se for permanente, aparece o novo valor mensal. Ao tocar em **Adquirir plano**, a página carrega o formulário de pagamento no próprio card. Durante a solicitação, pode aparecer **Processando solicitação...**. Sucessos e falhas são informados por toast em português. Quando o serviço fornece a próxima etapa, o navegador é encaminhado para ela. **Este fluxo ainda não foi homologado com um pagamento real; não considere a assinatura ativada apenas por abrir ou enviar o formulário.**
 
 ### Voltar
 
@@ -30,7 +30,7 @@ Se a página não conseguir carregar as informações da assinatura, uma tela de
 
 ## Campos e filtros
 
-Não há filtro próprio da assinatura. O formulário de contratação apresenta os campos de pagamento quando **Adquirir plano** é aberto. A escolha de mês no topo não altera o plano, o valor exibido nem o uso mensal mostrado aqui.
+Não há filtro de período próprio da assinatura. O campo **Cupom** aceita um código por contratação. Alterar o código remove a prévia anterior; toque em **Aplicar** novamente. A disponibilidade e o preço são verificados outra vez no servidor ao contratar. A escolha de mês no topo não altera o plano, o preço nem o uso mensal mostrado aqui.
 
 ## Fluxos comuns
 
@@ -52,8 +52,8 @@ Abrir e fechar o formulário não altera sua assinatura. O plano mostrado na pá
 
 ## Estados da tela
 
-Enquanto a página carrega, aparecem espaços reservados para os cards. Se houver erro, surgem as opções de nova tentativa ou retorno ao Dashboard. Ao abrir a contratação, aparece uma mensagem enquanto o formulário carrega; falhas de carregamento ou processamento são mostradas na própria área. Usuários Premium veem **Gerenciar assinatura** desabilitado no lugar do botão de compra.
+Enquanto a página carrega, aparecem espaços reservados para os cards. Se houver erro, surgem as opções de nova tentativa ou retorno ao Dashboard. Ao abrir a contratação, aparece uma mensagem enquanto o formulário carrega; erros e confirmação de pagamento são comunicados por toast. Usuários Premium veem **Gerenciar assinatura** desabilitado no lugar do botão de compra. Para assinaturas locais com cupom permanente, o card do plano atual exibe o valor mensal reduzido.
 
 ## Uso no celular
 
-O plano atual e as duas opções de comparação ficam um abaixo do outro. **Adquirir plano** ou **Voltar** ocupa a largura do card. Se o conteúdo do formulário for mais largo, sua área permite rolagem horizontal.
+O plano atual e as duas opções de comparação ficam um abaixo do outro. O campo de cupom e **Aplicar** também se empilham. **Adquirir plano** ou **Voltar** ocupa a largura do card. Se o conteúdo do formulário de pagamento for mais largo, sua área permite rolagem horizontal.

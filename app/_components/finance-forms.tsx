@@ -2,28 +2,32 @@
 
 import { useActionState, useState, type ReactNode } from "react";
 import { format } from "date-fns";
-import { confirmCommitment, createCard, createCommitment, createInstallment, linkCommitment, saveInvoice, updateCommitment, type CommitmentManagerData, type FinanceActionState } from "@/app/_actions/dashboard-v2";
+import { archiveBankAccount, confirmCommitment, createBankAccount, createCard, createCommitment, createInstallment, deleteCard, linkCommitment, saveInvoice, updateBankAccount, updateCard, updateCommitment, type CommitmentManagerData, type FinanceActionState } from "@/app/_actions/dashboard-v2";
 import { TRANSACTION_CATEGORY_OPTIONS } from "@/app/_constanst/transactions";
 import MonthPicker from "./month-picker";
 import { DatePicker } from "./ui/date-picker";
 import { CurrencyInput } from "./money-input";
 import { DayOfMonthPicker } from "./day-of-month-picker";
 import { formatCurrency } from "@/app/_utils/currency";
+import PremiumUpgradeDialog from "@/app/_components/premium-upgrade-dialog";
 
 const field = "min-w-0 h-11 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary [color-scheme:dark]";
 const label = "grid min-w-0 gap-1.5 text-xs text-muted-foreground";
 const initial: FinanceActionState = { message: "", success: false };
 type Action = (state: FinanceActionState, formData: FormData) => Promise<FinanceActionState>;
 
-function ActionForm({ action, children, submit, onSuccess }: { action: Action; children: ReactNode; submit: string; onSuccess?: () => void }) {
+function ActionForm({ action, children, submit, onSuccess, submitClassName }: { action: Action; children: ReactNode; submit: string; onSuccess?: () => void; submitClassName?: string }) {
+  const [limitMessage, setLimitMessage] = useState("");
   const [state, formAction, pending] = useActionState(async (previous: FinanceActionState, formData: FormData) => {
     const result = await action(previous, formData);
     if (result.success) onSuccess?.();
+    if (result.code === "PLAN_LIMIT") setLimitMessage(result.message);
     return result;
   }, initial);
   return <form action={formAction} className="grid min-w-0 gap-3 sm:grid-cols-2">
     {children}
-    <div className="sm:col-span-2 flex flex-wrap items-center gap-3"><button type="submit" disabled={pending} className="min-h-11 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-60">{pending ? "Salvando..." : submit}</button>{state.message && <p role="status" className={`text-xs ${state.success ? "text-emerald-400" : "text-rose-400"}`}>{state.message}</p>}</div>
+    <div className="sm:col-span-2 flex flex-wrap items-center gap-3"><button type="submit" disabled={pending} className={`min-h-11 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60 ${submitClassName ?? ""}`}>{pending ? "Salvando..." : submit}</button>{state.message && <p role="status" className={`text-xs ${state.success ? "text-emerald-400" : "text-rose-400"}`}>{state.message}</p>}</div>
+    <PremiumUpgradeDialog open={Boolean(limitMessage)} onOpenChange={(open) => { if (!open) setLimitMessage(""); }} title="Limite do plano gratuito atingido" description={limitMessage} />
   </form>;
 }
 
@@ -43,13 +47,69 @@ function DayFormField({ name, title, initialValue }: { name: string; title: stri
 }
 
 export function CardForm({ onSuccess }: { onSuccess?: () => void } = {}) {
-  return <ActionForm action={createCard} submit="Salvar cartão" onSuccess={onSuccess}>
-    <label className={label}>Nome<input name="name" required maxLength={80} className={field} placeholder="Ex.: Cartão principal" /></label>
-    <label className={label}>Bandeira<input name="brand" required maxLength={40} className={field} placeholder="Ex.: Visa" /></label>
+  return <ActionForm action={createCard} submit="Adicionar cartão" onSuccess={onSuccess} submitClassName="!bg-blue-500 !text-white hover:!bg-blue-600">
+    <label className={`${label} sm:col-span-2`}>Nome do cartão<input name="name" required maxLength={80} className={field} placeholder="Ex.: Nubank Roxinho" /></label>
+    <label className={`${label} sm:col-span-2`}>Banco ou instituição financeira<input name="brand" required maxLength={40} className={field} placeholder="Ex.: Nubank, Itaú, Banco do Brasil" /></label>
     <MoneyFormField name="limitTotal" title="Limite total" />
     <DayFormField name="closingDay" title="Dia de fechamento" />
     <DayFormField name="dueDay" title="Dia de vencimento" />
     <label className="flex items-center gap-2 self-end pb-3 text-sm"><input type="checkbox" name="isPrimary" />Cartão principal</label>
+    <p className="text-xs leading-5 text-muted-foreground sm:col-span-2">O limite utilizado é calculado pelas faturas abertas. O banco e os detalhes de vencimento podem ser editados depois.</p>
+  </ActionForm>;
+}
+
+export function CardEditForm({ card, onSuccess }: { card: { id: string; name: string; brand: string; limitTotal: number; closingDay: number; dueDay: number; isPrimary: boolean }; onSuccess?: () => void }) {
+  return <ActionForm action={updateCard} submit="Salvar alterações" onSuccess={onSuccess} submitClassName="!bg-blue-500 !text-white hover:!bg-blue-600">
+    <input type="hidden" name="cardId" value={card.id} />
+    <label className={`${label} sm:col-span-2`}>Nome do cartão<input name="name" defaultValue={card.name} required maxLength={80} className={field} /></label>
+    <label className={`${label} sm:col-span-2`}>Banco ou instituição financeira<input name="brand" defaultValue={card.brand} required maxLength={40} className={field} /></label>
+    <MoneyFormField name="limitTotal" title="Limite total" initialValue={card.limitTotal} />
+    <DayFormField name="closingDay" title="Dia de fechamento" initialValue={card.closingDay} />
+    <DayFormField name="dueDay" title="Dia de vencimento" initialValue={card.dueDay} />
+    <label className="flex items-center gap-2 self-end pb-3 text-sm"><input type="checkbox" name="isPrimary" defaultChecked={card.isPrimary} />Cartão principal</label>
+  </ActionForm>;
+}
+
+export function CardDeleteForm({ cardId, onSuccess }: { cardId: string; onSuccess?: () => void }) {
+  return <ActionForm action={deleteCard} submit="Remover cartão" onSuccess={onSuccess}>
+    <input type="hidden" name="cardId" value={cardId} />
+    <p className="text-sm text-muted-foreground sm:col-span-2">O cartão será arquivado. Faturas, parcelas e demais registros financeiros vinculados serão preservados.</p>
+  </ActionForm>;
+}
+
+const bankAccountTypes = [
+  { value: "CHECKING", label: "Conta corrente" },
+  { value: "SAVINGS", label: "Poupança" },
+  { value: "CASH", label: "Dinheiro" },
+  { value: "INVESTMENT", label: "Investimento" },
+  { value: "OTHER", label: "Outra conta" },
+] as const;
+
+export function BankAccountForm({ onSuccess }: { onSuccess?: () => void } = {}) {
+  return <ActionForm action={createBankAccount} submit="Adicionar conta" onSuccess={onSuccess}>
+    <label className={label}>Nome da conta<input name="name" required maxLength={80} className={field} placeholder="Ex.: Conta principal" /></label>
+    <label className={label}>Banco<input name="institution" required maxLength={80} className={field} placeholder="Ex.: Nubank" /></label>
+    <label className={label}>Tipo<select name="accountType" className={field}>{bankAccountTypes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
+    <MoneyFormField name="balance" title="Saldo atual" initialValue={0} />
+    <label className={label}>Cor da conta<input type="color" name="color" defaultValue="#3b82f6" className="h-11 w-full cursor-pointer rounded-lg border border-border bg-background p-1" /></label>
+  </ActionForm>;
+}
+
+export function BankAccountEditForm({ account, onSuccess }: { account: { id: string; name: string; institution: string; accountType: string; balance: number; color: string }; onSuccess?: () => void }) {
+  return <ActionForm action={updateBankAccount} submit="Salvar alterações" onSuccess={onSuccess}>
+    <input type="hidden" name="accountId" value={account.id} />
+    <label className={label}>Nome da conta<input name="name" defaultValue={account.name} required maxLength={80} className={field} /></label>
+    <label className={label}>Banco<input name="institution" defaultValue={account.institution} required maxLength={80} className={field} /></label>
+    <label className={label}>Tipo<select name="accountType" defaultValue={account.accountType} className={field}>{bankAccountTypes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
+    <MoneyFormField name="balance" title="Saldo atual" initialValue={account.balance} />
+    <label className={label}>Cor da conta<input type="color" name="color" defaultValue={account.color} className="h-11 w-full cursor-pointer rounded-lg border border-border bg-background p-1" /></label>
+  </ActionForm>;
+}
+
+export function BankAccountArchiveForm({ accountId, onSuccess }: { accountId: string; onSuccess?: () => void }) {
+  return <ActionForm action={archiveBankAccount} submit="Remover conta" onSuccess={onSuccess}>
+    <input type="hidden" name="accountId" value={accountId} />
+    <p className="text-sm text-muted-foreground sm:col-span-2">A conta será arquivada e deixará de aparecer no saldo total. Os demais registros serão preservados.</p>
   </ActionForm>;
 }
 
@@ -72,6 +132,7 @@ export function InstallmentForm({ cards, month, onSuccess }: { cards: { id: stri
     <MoneyFormField name="installmentAmount" title="Valor mensal" />
     <label className={label}>Número de parcelas<input name="installmentCount" type="number" min="1" max="120" required className={field} /></label>
     <div className={label}><span>Primeiro mês</span><MonthPicker name="startMonth" value={startMonth} onChange={setStartMonth} label="Primeiro mês" className="w-full" /></div>
+    <p className="text-xs leading-5 text-muted-foreground sm:col-span-2">Cada parcela será incluída automaticamente nos compromissos do mês e reduzirá o saldo disponível. O salário registrado continua mostrando o valor integral.</p>
   </ActionForm>;
 }
 

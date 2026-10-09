@@ -20,6 +20,7 @@ Este índice organiza o trabalho atual. Os documentos antigos da Fase 0 foram pr
 | [13 — Dashboard: realizado e previsto](13-dashboard-realizado-previsto.md) | Três números principais e compromissos separados | IMPLEMENTADO; validação visual autenticada pendente |
 | [14 — Dashboard: composição visual](14-dashboard-composicao-visual.md) | Grade, superfícies especiais e lista recente | IMPLEMENTADO; validação visual autenticada pendente |
 | [15 — Compromissos mensais](15-compromissos-mensais.md) | Aba em Transações, recorrência mensal e migrations aditivas | IMPLEMENTADO; validação autenticada pendente |
+| [16 — Cupons de assinatura](16-cupons-assinatura.md) | Descontos Premium, reserva de uso e webhook de cobrança | IMPLEMENTADO; homologação Mercado Pago pendente |
 
 Status `EM ANDAMENTO` significa que a camada local foi implementada, mas a funcionalidade ainda depende de teste autenticado ou backend. Metas não apresenta dados fictícios; Cartões possui cadastro persistente desde o Dashboard V2. **PENDENTE — validação com credenciais/ambiente real do Mercado Pago** é independente das correções locais.
 

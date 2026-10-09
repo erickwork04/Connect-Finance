@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Navbar from "@/app/_components/navbar";
-import { canUserAddTransaction } from "@/app/_data/get-dashboard/get-current-month-transactions/can-user-add-transactions";
+import { getPlanPermissions } from "@/app/_lib/plan-permissions";
 import { getYearMonthRangeUtc, resolveYearMonth } from "@/app/_lib/month-range";
 import { db } from "@/app/_lib/prisma";
 import TransactionsScreen from "./_components/transactions-screen";
@@ -20,7 +20,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
 
   if (view === "commitments") {
     const data = await getCommitmentsForMonth(month);
-    return <><Navbar /><main className="mx-auto w-full max-w-[1680px] min-w-0 space-y-4 px-4 py-5 sm:px-6 sm:py-6 xl:px-8">
+    return <><Navbar /><main className="app-shell-content mx-auto w-full max-w-[1680px] min-w-0 space-y-4 px-4 py-5 sm:px-6 sm:py-6 xl:px-8">
       <TransactionsHeader month={month} view={view} />
       <section aria-label="Gerenciar compromissos" className="min-w-0 rounded-xl border border-border bg-[#141816] p-4 sm:p-5">
         <CommitmentsManager key={month} month={month} initialData={data} />
@@ -28,14 +28,14 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
     </main></>;
   }
 
-  const [transactions, canAdd] = await Promise.all([
+  const [transactions, permissions] = await Promise.all([
     db.transaction.findMany({
       where: { userId, date: getYearMonthRangeUtc(month) },
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       select: { id: true, name: true, type: true, category: true, paymentMethod: true, source: true, amount: true, date: true },
     }),
-    canUserAddTransaction(),
+    getPlanPermissions(userId),
   ]);
 
-  return <><Navbar /><main className="mx-auto w-full max-w-[1680px] min-w-0 space-y-4 px-4 py-5 sm:px-6 sm:py-6 xl:px-8"><TransactionsHeader month={month} view={view} /><TransactionsScreen key={month} month={month} rows={transactions.map(toTransactionRow)} canAdd={canAdd} /></main></>;
+  return <><Navbar /><main className="app-shell-content mx-auto w-full max-w-[1680px] min-w-0 space-y-4 px-4 py-5 sm:px-6 sm:py-6 xl:px-8"><TransactionsHeader month={month} view={view} /><TransactionsScreen key={month} month={month} rows={transactions.map(toTransactionRow)} canAdd={true} canImportFiles={permissions.canImportFiles} /></main></>;
 }

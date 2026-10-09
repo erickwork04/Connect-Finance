@@ -1,9 +1,9 @@
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Navbar from "@/app/_components/navbar";
 import { resolveYearMonth } from "@/app/_lib/month-range";
-import { canUserAddTransaction } from "@/app/_data/get-dashboard/get-current-month-transactions/can-user-add-transactions";
 import { getDashboard, type CategoryPeriod } from "@/app/_data/get-dashboard";
+import { getPlanPermissions } from "@/app/_lib/plan-permissions";
 import CategoryExpensesCard from "./_componets/category-expenses-card";
 import { AiInsightCard, BalanceCard, CreditCardSummary, FinancialMetricCard, InstallmentsCard, LatestTransactionsCard, MonthlyCommitmentsCard } from "./_componets/dashboard-v2-cards";
 
@@ -18,16 +18,16 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const month = resolveYearMonth(params.month);
   if (params.month !== month) redirect(`/dashboard?month=${month}`);
   const categoryPeriod: CategoryPeriod = params.categoryPeriod === "three" || params.categoryPeriod === "six" || params.categoryPeriod === "year" ? params.categoryPeriod : "month";
-  const [data, canAdd, client] = await Promise.all([getDashboard(month, categoryPeriod), canUserAddTransaction(), clerkClient()]);
-  const user = await client.users.getUser(userId);
-  const premium = user.publicMetadata?.subscriptionPlan === "premium";
+  const [data, permissions] = await Promise.all([getDashboard(month, categoryPeriod), getPlanPermissions(userId)]);
+  const canAdd = true;
+  const premium = permissions.isPremium;
 
-  return <><Navbar /><main className="mx-auto w-full max-w-[1680px] min-w-0 space-y-4 px-4 py-5 sm:px-6 sm:py-6 lg:space-y-5 xl:px-8">
+  return <><Navbar /><main className="app-shell-content mx-auto w-full max-w-[1680px] min-w-0 space-y-4 px-4 py-5 sm:px-6 sm:py-6 lg:space-y-5 xl:px-8">
     <h1 className="sr-only">Resumo financeiro do mês</h1>
     <section aria-label="Valores realizados no mês" className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12 lg:gap-5">
       <div className="min-w-0 lg:col-span-3"><FinancialMetricCard data={data} metric="revenue" /></div>
       <div className="min-w-0 lg:col-span-3"><FinancialMetricCard data={data} metric="expenses" /></div>
-      <div className="min-w-0 sm:col-span-2 lg:col-span-6"><BalanceCard data={data} canAdd={canAdd} /></div>
+      <div className="min-w-0 sm:col-span-2 lg:col-span-6"><BalanceCard data={data} canAdd={canAdd} canImportFiles={permissions.canImportFiles} /></div>
     </section>
     <div className="flex min-w-0 flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-5">
       <div className="contents min-w-0 lg:block lg:space-y-5">

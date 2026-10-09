@@ -32,7 +32,7 @@ function PanelTitle({ icon, children }: { icon: ReactNode; children: ReactNode }
   return <h2 className="flex items-center gap-2.5 text-base font-semibold text-white sm:text-lg"><span className="text-primary">{icon}</span>{children}</h2>;
 }
 
-export function BalanceCard({ data, canAdd }: { data: DashboardData; canAdd: boolean }) {
+export function BalanceCard({ data, canAdd, canImportFiles = false }: { data: DashboardData; canAdd: boolean; canImportFiles?: boolean }) {
   const pendingCount = data.commitments?.filter((item) => item.status === "PENDING" && !item.transactionId).length ?? 0;
   return <section className={`${panel} relative h-full`} style={{ background: specialBackgrounds.balance, borderColor: "rgba(85, 176, 46, 0.25)" }}>
     <svg aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 hidden h-full w-[45%] sm:block" viewBox="0 0 360 180" preserveAspectRatio="none" fill="none">
@@ -42,12 +42,12 @@ export function BalanceCard({ data, canAdd }: { data: DashboardData; canAdd: boo
     </svg>
     <div className="relative flex h-full flex-col gap-5 sm:flex-row sm:items-end sm:gap-6 lg:flex-col lg:items-start lg:gap-3 xl:flex-row xl:items-end xl:gap-8">
       <div className="min-w-0">
-        <PanelTitle icon={<Wallet className="h-5 w-5" />}>Saldo</PanelTitle>
-        <p className="mt-3 break-words text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl xl:text-[2.5rem]">{formatCurrency(data.values.balance)}</p>
-        <div className="mt-2"><Comparison current={data.values.balance} previous={data.previous.balance} /></div>
+        <PanelTitle icon={<Wallet className="h-5 w-5" />}>Saldo disponível</PanelTitle>
+        <p className="mt-3 break-words text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl xl:text-[2.5rem]">{formatCurrency(data.available)}</p>
+        <p className="mt-2 text-xs text-muted-foreground">Saldo do mês após {formatCurrency(data.values.balance - data.available)} em compromissos</p>
       </div>
       <div className="w-full min-w-0 sm:w-auto lg:w-full xl:w-auto">
-        <AddTransactionButton userCanAddTransaction={canAdd} />
+        <AddTransactionButton userCanAddTransaction={canAdd} canImportFiles={canImportFiles} />
         <div className="mt-2.5 text-xs leading-5 text-muted-foreground">
           {data.commitments === null ? <p>Compromissos indisponíveis.</p> : pendingCount === 0 ? <p>Nenhum compromisso pendente.</p> : <><p>{pendingCount} compromisso{pendingCount === 1 ? "" : "s"} pendente{pendingCount === 1 ? "" : "s"}</p><p className="font-medium tabular-nums text-amber-100/80">{formatCurrency(data.commitmentsSummary?.pending ?? 0)} pendente{pendingCount === 1 ? "" : "s"}</p></>}
         </div>

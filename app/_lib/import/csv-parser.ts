@@ -244,6 +244,9 @@ function mapColumns(headers: string[]): {
   amountIndex: number;
   idIndex: number;
   typeIndex: number;
+  installmentIndex: number;
+  installmentCurrentIndex: number;
+  installmentTotalIndex: number;
 } {
   const norm = headers.map((h) =>
     h
@@ -259,8 +262,14 @@ function mapColumns(headers: string[]): {
   let amountIndex = -1;
   let idIndex = -1;
   let typeIndex = -1;
+  let installmentIndex = -1;
+  let installmentCurrentIndex = -1;
+  let installmentTotalIndex = -1;
 
   norm.forEach((h, i) => {
+    if (installmentCurrentIndex === -1 && (h.includes("parcelaatual") || h.includes("parcelacorrente") || h.includes("numeroparcela") || h.includes("numerodaparcela") || h.includes("currentinstallment") || h.includes("installmentnumber"))) installmentCurrentIndex = i;
+    if (installmentTotalIndex === -1 && (h.includes("totalparcelas") || h.includes("totaldeparcelas") || h.includes("quantidadeparcelas") || h.includes("qtdparcelas") || h.includes("qtdeparcelas") || h.includes("numerodeparcelas") || h.includes("numparcelas") || h.includes("parcelastotal") || h.includes("totalinstallments") || h.includes("installmenttotal"))) installmentTotalIndex = i;
+    if (installmentIndex === -1 && (h.includes("parcela") || h.includes("installment") || h === "vezes")) installmentIndex = i;
     if (
       dateIndex === -1 &&
       (h === "data" ||
@@ -323,7 +332,35 @@ function mapColumns(headers: string[]): {
   if (descIndex === -1 && headers.length > 1) descIndex = 1;
   if (amountIndex === -1 && headers.length > 2) amountIndex = 2;
 
-  return { dateIndex, descIndex, amountIndex, idIndex, typeIndex };
+  return { dateIndex, descIndex, amountIndex, idIndex, typeIndex, installmentIndex, installmentCurrentIndex, installmentTotalIndex };
+}
+
+function installmentMarker(value: string): { current: number; total: number; text: string } | null {
+  const match = value.match(/(?:\bparc(?:ela)?\.?\s*)?(\d{1,3})\s*(?:\/|de)\s*(\d{1,3})(?:\s*(?:parcelas?|installments?))?/i);
+  if (!match) return null;
+  const current = Number(match[1]);
+  const total = Number(match[2]);
+  if (!Number.isInteger(current) || !Number.isInteger(total) || current < 1 || total < 2 || current > total || total > 120) return null;
+  return { current, total, text: match[0] };
+}
+
+function parseInstallmentInfo(description: string, markerColumn: string, currentColumn: string, totalColumn: string) {
+  const nameMarker = installmentMarker(description);
+  const separateCurrent = Number(currentColumn.trim());
+  const separateTotal = Number(totalColumn.trim());
+  const separateColumnsValid = Number.isInteger(separateCurrent) && Number.isInteger(separateTotal) && separateCurrent >= 1 && separateCurrent <= separateTotal && separateTotal <= 120;
+  const marker = separateColumnsValid
+    ? { current: separateCurrent, total: separateTotal, text: "" }
+    : installmentMarker(markerColumn) ?? nameMarker;
+  if (!marker) return undefined;
+
+  const cleanName = (nameMarker ? description.replace(nameMarker.text, " ") : description)
+    .replace(/[()[\]]/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/[\s|:–—-]+$/g, "")
+    .trim();
+  if (!cleanName) return undefined;
+  return { current: marker.current, total: marker.total, description: cleanName.slice(0, 120) };
 }
 
 /**
@@ -391,7 +428,7 @@ export function parseCsv(
   if (headerIndex === -1) headerIndex = 0;
 
   const headers = splitCsvRow(rawLines[headerIndex], delimiter);
-  const { dateIndex, descIndex, amountIndex, idIndex } = mapColumns(headers);
+  const { dateIndex, descIndex, amountIndex, idIndex, installmentIndex, installmentCurrentIndex, installmentTotalIndex } = mapColumns(headers);
 
   const transactions: RawParsedTransaction[] = [];
 
@@ -406,6 +443,9 @@ export function parseCsv(
     const rawAmt = cols[amountIndex];
     const rawDesc = descIndex !== -1 && cols[descIndex] !== undefined ? cols[descIndex] : "";
     const rawId = idIndex !== -1 && cols[idIndex] !== undefined ? cols[idIndex] : undefined;
+    const rawInstallment = installmentIndex !== -1 && cols[installmentIndex] !== undefined ? cols[installmentIndex] : "";
+    const rawInstallmentCurrent = installmentCurrentIndex !== -1 && cols[installmentCurrentIndex] !== undefined ? cols[installmentCurrentIndex] : "";
+    const rawInstallmentTotal = installmentTotalIndex !== -1 && cols[installmentTotalIndex] !== undefined ? cols[installmentTotalIndex] : "";
 
     if (!rawDate || !rawAmt) continue;
 
@@ -515,6 +555,10 @@ export function parseCsv(
       type = TransactionType.INVESTMENT;
     }
 
+    const installmentInfo = mode === "CARD_INVOICE" && type === TransactionType.EXPENSE
+      ? parseInstallmentInfo(description, rawInstallment, rawInstallmentCurrent, rawInstallmentTotal)
+      : undefined;
+
     transactions.push({
       date: parsedDate.date,
       time: parsedDate.time,
@@ -523,6 +567,7 @@ export function parseCsv(
       type,
       paymentMethod,
       externalId: rawId && rawId.trim() ? rawId.trim() : undefined,
+      installmentInfo,
     });
   }
 

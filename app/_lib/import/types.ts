@@ -9,6 +9,12 @@ export type ImportMode = "BANK_STATEMENT" | "CARD_INVOICE";
 
 export type DuplicateStatus = "NEW" | "POSSIBLE_DUPLICATE" | "ALREADY_IMPORTED";
 
+export interface ImportInstallmentInfo {
+  current: number;
+  total: number;
+  description: string;
+}
+
 export interface ExistingTransactionMatch {
   id: string;
   name: string;
@@ -32,6 +38,7 @@ export interface ParsedTransaction {
   source: TransactionSource;
   externalId?: string;
   importHash: string;
+  installmentInfo?: ImportInstallmentInfo;
   duplicateStatus: DuplicateStatus;
   duplicateReason?: string;
   existingMatch?: ExistingTransactionMatch;
@@ -53,6 +60,7 @@ export interface ProcessFileResult {
 export interface ConfirmImportResult {
   success: boolean;
   importedCount: number;
+  installmentsAdded?: number;
   ignoredCount: number;
   alreadyExistedCount: number;
   errorMessage?: string;

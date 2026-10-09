@@ -7,12 +7,14 @@ import { deleteCommitment, endRecurringCommitment, getCommitmentsForMonth, type 
 import { CommitmentEditForm, CommitmentForm, CommitmentLinkForm, ConfirmCommitmentForm } from "@/app/_components/finance-forms";
 import { formatCurrency } from "@/app/_utils/currency";
 import { formatYearMonthPtBr } from "@/app/_lib/month-range";
+import PremiumUpgradeDialog from "@/app/_components/premium-upgrade-dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/app/_components/ui/alert-dialog";
 
 export default function CommitmentsManager({ month, initialData }: { month: string; initialData: CommitmentManagerData | null }) {
   const [data, setData] = useState(initialData);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [premiumNoticeOpen, setPremiumNoticeOpen] = useState(false);
   const router = useRouter();
 
   const refresh = async () => {
@@ -61,10 +63,12 @@ export default function CommitmentsManager({ month, initialData }: { month: stri
   return <div className="min-w-0 space-y-4">
     <h2 className="text-lg font-semibold">Compromissos · {formatYearMonthPtBr(month)}</h2>
     <p className="text-sm leading-5 text-muted-foreground">Compromissos mensais têm status separado em cada mês. Vincule manualmente uma despesa do mesmo mês e valor quando ela for paga; o saldo considera apenas a transação.</p>
-    <details className="rounded-xl border border-border bg-white/[.03] p-4">
+    {data.activeCommitmentLimit !== null ? <p className="text-xs text-muted-foreground">{data.activeCommitmentCount} de {data.activeCommitmentLimit} compromissos ativos no plano Free.</p> : null}
+    {data.canCreateCommitment ? <details className="rounded-xl border border-border bg-white/[.03] p-4">
       <summary className="flex min-h-8 cursor-pointer items-center gap-2 font-semibold text-primary"><Plus aria-hidden="true" className="h-4 w-4" />Adicionar compromisso</summary>
       <div className="mt-4"><CommitmentForm month={month} onSuccess={refresh} /></div>
-    </details>
+    </details> : <button type="button" onClick={() => setPremiumNoticeOpen(true)} className="min-h-11 rounded-lg border border-primary/30 px-4 text-sm font-semibold text-primary hover:bg-primary/10">Limite do plano gratuito atingido · Conhecer o Premium</button>}
+    <PremiumUpgradeDialog open={premiumNoticeOpen} onOpenChange={setPremiumNoticeOpen} title="Limite do plano gratuito atingido" description="O plano Free permite até 3 compromissos financeiros ativos. Assine o Premium para ter compromissos ilimitados." />
     {error ? <p role="alert" className="text-sm text-rose-400">{error}</p> : null}
     {data.commitments.length === 0 ? <p className="rounded-xl border border-border p-5 text-sm text-muted-foreground">Nenhum compromisso registrado neste mês. Use “Adicionar compromisso” para começar.</p> : <div className="grid min-w-0 gap-3 md:grid-cols-2 2xl:grid-cols-3" aria-label="Compromissos do mês">
       {data.commitments.map((item) => {

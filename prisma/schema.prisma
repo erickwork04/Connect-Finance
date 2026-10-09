@@ -67,12 +67,28 @@ model CreditCard {
   @@index([userId, isActive, isPrimary])
 }
 
+model BankAccount {
+  id          String          @id @default(uuid())
+  userId      String
+  name        String
+  institution String
+  accountType BankAccountType @default(CHECKING)
+  balance     Decimal         @db.Decimal(12, 2)
+  color       String          @default("#3b82f6")
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([userId, isActive, createdAt])
+}
+
 model CardInvoice {
   id        String       @id @default(uuid())
   userId    String
   cardId    String
   month     String       @db.VarChar(7)
   amount    Decimal      @db.Decimal(12, 2)
+  paidAmount Decimal    @default(0) @db.Decimal(12, 2)
   status    InvoiceStatus @default(OPEN)
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
@@ -92,9 +108,11 @@ model InstallmentPlan {
   startMonth        String            @db.VarChar(7)
   cardId            String?
   status            InstallmentStatus @default(ACTIVE)
+  sourceImportHash  String?           @unique
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   card              CreditCard?       @relation(fields: [cardId], references: [id], onDelete: Restrict)
+  commitments       MonthlyCommitment[]
 
   @@index([userId, startMonth, status])
 }
@@ -110,15 +128,18 @@ model MonthlyCommitment {
   status        CommitmentStatus @default(PENDING)
   transactionId String?          @unique
   recurrenceId  String?
+  installmentPlanId String?
   occurrenceMonth String?        @db.VarChar(7)
   deletedAt     DateTime?
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
   transaction   Transaction?     @relation(fields: [transactionId], references: [id], onDelete: Restrict)
   recurrence    RecurringCommitment? @relation(fields: [recurrenceId], references: [id], onDelete: Restrict)
+  installmentPlan InstallmentPlan? @relation(fields: [installmentPlanId], references: [id], onDelete: Restrict)
 
   @@index([userId, dueDate, status])
   @@unique([recurrenceId, occurrenceMonth])
+  @@unique([installmentPlanId, occurrenceMonth])
 }
 
 model RecurringCommitment {
@@ -137,6 +158,74 @@ model RecurringCommitment {
   @@index([userId, startMonth])
 }
 
+model Coupon {
+  id           String                    @id @default(uuid())
+  code         String                    @unique @db.VarChar(40)
+  type         CouponType
+  value        Decimal                   @db.Decimal(10, 2)
+  active       Boolean                   @default(true)
+  expiresAt    DateTime?
+  maxUses      Int?
+  currentUses  Int                       @default(0)
+  reservedUses Int                       @default(0)
+  firstCycleOnly Boolean                 @default(false)
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+  usages       CouponUsage[]
+  subscriptions MercadoPagoSubscription[]
+}
+
+model CouponUsage {
+  id             String                   @id @default(uuid())
+  couponId       String
+  userId         String
+  subscriptionId String                   @unique
+  usedAt         DateTime                 @default(now())
+  coupon         Coupon                   @relation(fields: [couponId], references: [id], onDelete: Restrict)
+  subscription   MercadoPagoSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
+
+  @@unique([couponId, userId])
+  @@index([userId, usedAt])
+}
+
+model MercadoPagoSubscription {
+  id                     String                    @id @default(uuid())
+  userId                 String
+  mercadoPagoId          String?                   @unique
+  couponId               String?
+  couponCode             String?
+  baseAmount             Decimal                   @db.Decimal(10, 2)
+  currentAmount          Decimal                   @db.Decimal(10, 2)
+  couponFirstCycleOnly   Boolean                   @default(false)
+  couponRestored         Boolean                   @default(false)
+  couponReserved         Boolean                   @default(false)
+  status                 BillingSubscriptionStatus @default(CREATING)
+  firstPaymentId         String?                   @unique
+  firstPaymentApprovedAt DateTime?
+  restoreLockUntil       DateTime?
+  createdAt              DateTime                  @default(now())
+  updatedAt              DateTime                  @updatedAt
+  coupon                 Coupon?                   @relation(fields: [couponId], references: [id], onDelete: Restrict)
+  usage                  CouponUsage?
+
+  @@index([userId, createdAt])
+  @@index([couponId, couponReserved])
+}
+
+enum CouponType {
+  PERCENTAGE
+  FIXED
+}
+
+enum BillingSubscriptionStatus {
+  CREATING
+  PENDING
+  ACTIVE
+  PAUSED
+  CANCELLED
+  FAILED
+}
+
 enum InvoiceStatus {
   OPEN
   PAID
@@ -146,6 +235,14 @@ enum InstallmentStatus {
   ACTIVE
   COMPLETED
   CANCELLED
+}
+
+enum BankAccountType {
+  CHECKING
+  SAVINGS
+  CASH
+  INVESTMENT
+  OTHER
 }
 
 enum CommitmentStatus {

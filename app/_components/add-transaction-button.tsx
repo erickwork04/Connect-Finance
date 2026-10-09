@@ -28,17 +28,21 @@ import {
 } from "./ui/tooltip";
 import { ImportTransactionsDialog } from "./import-transactions/import-transactions-dialog";
 import { ImportMode } from "@/app/_lib/import/types";
+import PremiumUpgradeDialog from "@/app/_components/premium-upgrade-dialog";
 
 interface AddTransactionButtonProps {
   userCanAddTransaction?: boolean;
+  canImportFiles?: boolean;
 }
 
 const AddTransactionButton = ({
   userCanAddTransaction = true,
+  canImportFiles = false,
 }: AddTransactionButtonProps) => {
   const [upsertIsOpen, setUpsertIsOpen] = useState(false);
   const [importIsOpen, setImportIsOpen] = useState(false);
   const [importMode, setImportMode] = useState<ImportMode>("BANK_STATEMENT");
+  const [premiumNoticeOpen, setPremiumNoticeOpen] = useState(false);
   const selectedMonth = resolveYearMonth(useSearchParams().get("month"));
   const initialDate = useMemo(() => {
     if (selectedMonth === resolveYearMonth(undefined)) return new Date();
@@ -50,11 +54,13 @@ const AddTransactionButton = ({
   };
 
   const handleOpenBankStatement = () => {
+    if (!canImportFiles) { setPremiumNoticeOpen(true); return; }
     setImportMode("BANK_STATEMENT");
     setImportIsOpen(true);
   };
 
   const handleOpenCardInvoice = () => {
+    if (!canImportFiles) { setPremiumNoticeOpen(true); return; }
     setImportMode("CARD_INVOICE");
     setImportIsOpen(true);
   };
@@ -149,7 +155,9 @@ const AddTransactionButton = ({
         isOpen={importIsOpen}
         setIsOpen={setImportIsOpen}
         mode={importMode}
+        invoiceMonth={selectedMonth}
       />
+      <PremiumUpgradeDialog open={premiumNoticeOpen} onOpenChange={setPremiumNoticeOpen} title="Importação exclusiva do Premium" description="Automatize seu controle financeiro importando suas faturas e arquivos bancários. Assine o Premium para desbloquear esse recurso." />
     </>
   );
 };

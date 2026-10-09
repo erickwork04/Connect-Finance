@@ -1,11 +1,12 @@
 "use server";
 
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import { db } from "@/app/_lib/prisma";
 import { ConfirmImportResult, ParsedTransaction } from "@/app/_lib/import/types";
 import { revalidatePath } from "next/cache";
-import { getCurrentMonthTransactions } from "@/app/_data/get-dashboard/get-current-month-transactions";
+import { getPlanPermissions } from "@/app/_lib/plan-permissions";
 import { TransactionSource } from "@prisma/client";
+import { monthlyDueDate, shiftYearMonth, YEAR_MONTH_PATTERN } from "@/app/_lib/month-range";
 
 export async function confirmImportTransactions(
   transactionsToImport: ParsedTransaction[],
@@ -13,6 +14,7 @@ export async function confirmImportTransactions(
   importBatchId?: string,
   fileName?: string,
   source?: TransactionSource,
+  invoiceMonth?: string,
 ): Promise<ConfirmImportResult> {
   const { userId } = await auth();
   if (!userId) {
@@ -36,34 +38,9 @@ export async function confirmImportTransactions(
   }
 
   // Check subscription limits for free users
-  const client = await clerkClient();
-  const user = await client.users.getUser(userId);
-  const isPremium = user.publicMetadata?.subscriptionPlan === "premium";
-
-  if (!isPremium) {
-    const currentMonthCount = await getCurrentMonthTransactions();
-    const availableSlots = Math.max(0, 10 - currentMonthCount);
-
-    if (availableSlots <= 0) {
-      return {
-        success: false,
-        importedCount: 0,
-        ignoredCount: 0,
-        alreadyExistedCount: 0,
-        errorMessage:
-          "Você atingiu o limite de 10 transações mensais do plano gratuito. Faça upgrade para o plano Premium para importar ilimitado.",
-      };
-    }
-
-    if (transactionsToImport.length > availableSlots) {
-      return {
-        success: false,
-        importedCount: 0,
-        ignoredCount: 0,
-        alreadyExistedCount: 0,
-        errorMessage: `Você só possui ${availableSlots} ${availableSlots === 1 ? "vaga restante" : "vagas restantes"} no plano gratuito para este mês. Selecione no máximo ${availableSlots} transações ou assine o plano Premium.`,
-      };
-    }
+  const permissions = await getPlanPermissions(userId);
+  if (!permissions.canImportFiles) {
+    return { success: false, importedCount: 0, ignoredCount: 0, alreadyExistedCount: 0, errorMessage: "Importação exclusiva do Premium. Assine o Premium para importar faturas e arquivos bancários." };
   }
 
   // Re-verify already imported items in database to prevent concurrent duplication
@@ -109,6 +86,9 @@ export async function confirmImportTransactions(
   const finalBatchId = importBatchId || crypto.randomUUID();
   const batchSource = source || transactionsToImport[0]?.source || TransactionSource.CSV;
   const batchFileName = fileName || "importacao";
+  const selectedInvoiceMonth = batchSource === TransactionSource.CARD_INVOICE && invoiceMonth && YEAR_MONTH_PATTERN.test(invoiceMonth)
+    ? invoiceMonth
+    : undefined;
 
   const toCreate: Array<{
     name: string;
@@ -122,9 +102,11 @@ export async function confirmImportTransactions(
     externalId?: string | null;
     importHash?: string | null;
     importBatchId: string;
+    installmentInfo?: ParsedTransaction["installmentInfo"];
   }> = [];
 
   let alreadyExistedCount = 0;
+  let installmentsAdded = 0;
 
   for (const t of transactionsToImport) {
     // Check externalId uniqueness first
@@ -154,6 +136,12 @@ export async function confirmImportTransactions(
       externalId: t.externalId || null,
       importHash: t.importHash || null,
       importBatchId: finalBatchId,
+      installmentInfo: t.source === TransactionSource.CARD_INVOICE && t.type === "EXPENSE" && t.installmentInfo &&
+        Number.isInteger(t.installmentInfo.current) && Number.isInteger(t.installmentInfo.total) &&
+        t.installmentInfo.current >= 1 && t.installmentInfo.total >= t.installmentInfo.current && t.installmentInfo.total <= 120 &&
+        typeof t.installmentInfo.description === "string" && t.installmentInfo.description.trim().length > 0
+        ? { ...t.installmentInfo, description: t.installmentInfo.description.trim().slice(0, 120) }
+        : undefined,
     });
   }
 
@@ -170,10 +158,49 @@ export async function confirmImportTransactions(
         },
       });
 
-      // Bulk create transactions linked to the batch
-      await tx.transaction.createMany({
-        data: toCreate,
+      // Keep regular rows batched; installment rows need a transaction id so the
+      // already billed installment can be recorded as paid without double-counting.
+      const regularRows = toCreate.filter((item) => !item.installmentInfo).map((item) => {
+        const row = { ...item };
+        delete row.installmentInfo;
+        return row;
       });
+      if (regularRows.length) await tx.transaction.createMany({ data: regularRows });
+
+      for (const item of toCreate) {
+        if (!item.installmentInfo) continue;
+        const { installmentInfo, ...transactionData } = item;
+        const createdTransaction = await tx.transaction.create({ data: transactionData, select: { id: true } });
+        const existingPlan = item.importHash
+          ? await tx.installmentPlan.findUnique({ where: { sourceImportHash: item.importHash }, select: { id: true } })
+          : null;
+        if (existingPlan) continue;
+
+        const billedMonth = selectedInvoiceMonth ?? item.date.toISOString().slice(0, 7);
+        const plan = await tx.installmentPlan.create({ data: {
+          userId,
+          description: installmentInfo.description,
+          totalAmount: Math.round(item.amount * installmentInfo.total * 100) / 100,
+          installmentAmount: item.amount,
+          installmentCount: installmentInfo.total,
+          startMonth: shiftYearMonth(billedMonth, 1 - installmentInfo.current),
+          sourceImportHash: item.importHash,
+          status: "ACTIVE",
+        }, select: { id: true } });
+        installmentsAdded++;
+
+        await tx.monthlyCommitment.create({ data: {
+          userId,
+          installmentPlanId: plan.id,
+          occurrenceMonth: billedMonth,
+          description: `${installmentInfo.description} · parcela ${installmentInfo.current}/${installmentInfo.total}`,
+          amount: item.amount,
+          dueDate: monthlyDueDate(billedMonth, 1),
+          category: item.category,
+          status: "PAID",
+          transactionId: createdTransaction.id,
+        } });
+      }
     });
   }
 
@@ -181,11 +208,15 @@ export async function confirmImportTransactions(
   const ignoredCount = Math.max(0, totalCandidates - importedCount - alreadyExistedCount);
 
   revalidatePath("/");
+  revalidatePath("/dashboard");
   revalidatePath("/transactions");
+  revalidatePath("/cards");
+  revalidatePath("/installments");
 
   return {
     success: true,
     importedCount,
+    installmentsAdded,
     ignoredCount,
     alreadyExistedCount,
   };

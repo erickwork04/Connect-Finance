@@ -47,6 +47,7 @@ interface ImportTransactionsDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   mode: ImportMode;
+  invoiceMonth?: string;
 }
 
 type Step = "UPLOAD" | "PROCESSING" | "PREVIEW" | "SUCCESS";
@@ -55,6 +56,7 @@ export function ImportTransactionsDialog({
   isOpen,
   setIsOpen,
   mode,
+  invoiceMonth,
 }: ImportTransactionsDialogProps) {
   const [step, setStep] = useState<Step>("UPLOAD");
   const [isDragOver, setIsDragOver] = useState(false);
@@ -70,6 +72,7 @@ export function ImportTransactionsDialog({
 
   const [importSummary, setImportSummary] = useState<{
     imported: number;
+    installmentsAdded: number;
     ignored: number;
     alreadyExisted: number;
   } | null>(null);
@@ -199,6 +202,7 @@ export function ImportTransactionsDialog({
   const alreadyImportedCount = transactions.filter(
     (t) => t.duplicateStatus === "ALREADY_IMPORTED",
   ).length;
+  const installmentCount = transactions.filter((t) => t.installmentInfo).length;
 
   const selectedCount = transactions.filter((t) => t.selected).length;
 
@@ -239,6 +243,7 @@ export function ImportTransactionsDialog({
           batchId || undefined,
           selectedFile?.name,
           toImport[0]?.source,
+          invoiceMonth,
         );
         if (!result.success) {
           toast.error(result.errorMessage || "Erro ao salvar transações.");
@@ -247,6 +252,7 @@ export function ImportTransactionsDialog({
 
         setImportSummary({
           imported: result.importedCount,
+          installmentsAdded: result.installmentsAdded ?? 0,
           ignored: result.ignoredCount,
           alreadyExisted: result.alreadyExistedCount,
         });
@@ -288,7 +294,7 @@ export function ImportTransactionsDialog({
                     <DialogDescription className="text-xs sm:text-sm text-muted-foreground">
                       {isBank
                         ? "Importe suas movimentações bancárias para controle instantâneo."
-                        : "Importe os lançamentos da sua fatura para categorizar despesas."}
+                        : `Importe os lançamentos da fatura de ${invoiceMonth?.slice(5)}/${invoiceMonth?.slice(0, 4)} para categorizar despesas e identificar parcelamentos.`}
                     </DialogDescription>
                   </div>
                 </div>
@@ -437,6 +443,11 @@ export function ImportTransactionsDialog({
                     <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                       {newCount} novas
                     </span>
+                    {mode === "CARD_INVOICE" && installmentCount > 0 && (
+                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-violet-500/10 text-violet-300 border border-violet-500/20">
+                        {installmentCount} parceladas detectadas
+                      </span>
+                    )}
                     {possibleDuplicateCount > 0 && (
                       <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
                         {possibleDuplicateCount} possíveis duplicadas
@@ -594,6 +605,11 @@ export function ImportTransactionsDialog({
                                   <p className="font-semibold text-foreground truncate max-w-[220px]">
                                     {t.name}
                                   </p>
+                                  {t.installmentInfo && (
+                                    <span className="mt-1 inline-flex rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-300">
+                                      Parcela {t.installmentInfo.current}/{t.installmentInfo.total}
+                                    </span>
+                                  )}
                                 </td>
                                 <td className="py-2.5 px-3">
                                   <span
@@ -713,6 +729,11 @@ export function ImportTransactionsDialog({
                                   <p className="font-bold text-sm text-foreground truncate">
                                     {t.name}
                                   </p>
+                                  {t.installmentInfo && (
+                                    <span className="mt-1 inline-flex rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-300">
+                                      Parcela {t.installmentInfo.current}/{t.installmentInfo.total}
+                                    </span>
+                                  )}
                                   <p className="text-xs text-muted-foreground">
                                     {dateObj.toLocaleDateString("pt-BR", {
                                       day: "2-digit",
@@ -878,7 +899,7 @@ export function ImportTransactionsDialog({
               </div>
 
               {/* Summary Stats Box */}
-              <div className="grid grid-cols-3 gap-2 rounded-xl border border-border bg-background/50 p-4 text-center">
+              <div className="grid grid-cols-2 gap-2 rounded-xl border border-border bg-background/50 p-4 text-center sm:grid-cols-4">
                 <div className="space-y-0.5">
                   <span className="text-xl sm:text-2xl font-bold text-emerald-400">
                     {importSummary.imported}
@@ -888,6 +909,14 @@ export function ImportTransactionsDialog({
                   </p>
                 </div>
                 <div className="space-y-0.5 border-x border-border">
+                  <span className="text-xl sm:text-2xl font-bold text-violet-300">
+                    {importSummary.installmentsAdded}
+                  </span>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground font-medium">
+                    Parcelamentos
+                  </p>
+                </div>
+                <div className="space-y-0.5 border-l border-border">
                   <span className="text-xl sm:text-2xl font-bold text-amber-400">
                     {importSummary.ignored}
                   </span>

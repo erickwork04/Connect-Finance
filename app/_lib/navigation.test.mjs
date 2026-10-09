@@ -13,9 +13,9 @@ test("aba ativa reconhece rota principal e páginas filhas", () => {
   assert.equal(isNavActive("/transactions-archive", "/transactions"), false);
 });
 
-test("navbar lista as cinco rotas privadas previstas", () => {
+test("navbar usa as rotas privadas existentes", () => {
   assert.deepEqual(NAV_ITEMS.map(({ href }) => href), [
-    "/dashboard", "/transactions", "/cards", "/goals", "/subscription",
+    "/dashboard", "/transactions", "/banks", "/cards", "/installments", "/goals", "/subscription",
   ]);
 });
 

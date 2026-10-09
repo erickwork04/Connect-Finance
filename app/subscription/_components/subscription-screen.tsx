@@ -5,22 +5,32 @@ import PageHeader from "@/app/_components/page-header";
 import { Badge } from "@/app/_components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/app/_components/ui/card";
 import AcquirePlanButton from "./acquire-plan-button";
+import SubscriptionCheckoutStatus from "./subscription-checkout-status";
+import type { CheckoutStatus } from "./subscription-checkout-status";
+import { formatCurrency } from "@/app/_utils/currency";
 
 interface SubscriptionScreenProps {
   hasPremiumPlan: boolean;
-  currentMonthTransactions: number;
+  monthlyAmount: number | null;
+  activeCouponCode: string | null;
+  couponRestored: boolean;
+  checkout: { id: string; status: CheckoutStatus; paid: boolean } | null;
 }
 
 export default function SubscriptionScreen({
   hasPremiumPlan,
-  currentMonthTransactions,
+  monthlyAmount,
+  activeCouponCode,
+  couponRestored,
+  checkout,
 }: SubscriptionScreenProps) {
   const currentPlan = hasPremiumPlan ? "Premium" : "Gratuito";
 
   return (
     <>
+      {checkout ? <SubscriptionCheckoutStatus {...checkout} /> : null}
       <Navbar />
-      <main className="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-5 p-4 sm:gap-6 sm:p-6">
+      <main className="app-shell-content mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-5 p-4 sm:gap-6 sm:p-6">
         <PageHeader title="Assinatura" />
         <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
           Confira o plano ativo e os benefícios disponíveis para sua conta.
@@ -36,16 +46,18 @@ export default function SubscriptionScreen({
               <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">{currentPlan}</h2>
               <p className="max-w-lg text-sm leading-6 text-muted-foreground">
                 {hasPremiumPlan
-                  ? "Transações ilimitadas e relatórios de IA liberados para sua conta."
-                  : `Você usou ${currentMonthTransactions} de 10 transações disponíveis neste mês.`}
+                  ? "Importação de arquivos, cartões e compromissos ilimitados, além de relatórios com IA."
+                  : "Transações e histórico ilimitados, com até 1 cartão e 3 compromissos ativos."}
               </p>
             </div>
             <div className="shrink-0 border-t border-border pt-5 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
               <p className="text-xs text-muted-foreground">Valor mensal do plano</p>
               <p className="mt-1 text-3xl font-semibold tabular-nums sm:text-4xl">
-                {hasPremiumPlan ? "R$ 19,90" : "R$ 0,00"}
+                {hasPremiumPlan ? formatCurrency(monthlyAmount ?? 19.9) : "R$ 0,00"}
                 <span className="ml-1 text-sm font-normal text-muted-foreground">/mês</span>
               </p>
+              {hasPremiumPlan && activeCouponCode && monthlyAmount !== null
+                ? <p className="mt-1 text-xs text-primary">{couponRestored ? `Cupom ${activeCouponCode} usado no primeiro mês` : `Cupom ${activeCouponCode} aplicado`}</p> : null}
             </div>
           </CardContent>
         </Card>
@@ -62,8 +74,10 @@ export default function SubscriptionScreen({
                 <p className="text-2xl font-semibold tabular-nums">R$ 0,00 <span className="text-sm font-normal text-muted-foreground">/mês</span></p>
               </CardHeader>
               <CardContent className="space-y-4 p-5 sm:p-6">
-                <p className="flex items-start gap-3 text-sm leading-6"><Check aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-primary" /> Até 10 transações por mês</p>
-                <p className="flex items-start gap-3 text-sm leading-6 text-muted-foreground"><X aria-hidden="true" className="mt-1 h-4 w-4 shrink-0" /> Sem relatórios de IA</p>
+                <p className="flex items-start gap-3 text-sm leading-6"><Check aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-primary" /> Transações e histórico ilimitados</p>
+                <p className="flex items-start gap-3 text-sm leading-6"><Check aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-primary" /> Até 1 cartão de crédito</p>
+                <p className="flex items-start gap-3 text-sm leading-6"><Check aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-primary" /> Até 3 compromissos ativos</p>
+                <p className="flex items-start gap-3 text-sm leading-6 text-muted-foreground"><X aria-hidden="true" className="mt-1 h-4 w-4 shrink-0" /> Sem importação de arquivos ou relatórios com IA</p>
               </CardContent>
             </Card>
 
@@ -78,6 +92,8 @@ export default function SubscriptionScreen({
               <CardContent className="space-y-4 p-5 sm:p-6">
                 <p className="flex items-start gap-3 text-sm leading-6"><Check aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-primary" /> Transações ilimitadas</p>
                 <p className="flex items-start gap-3 text-sm leading-6"><Check aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-primary" /> Relatórios de IA</p>
+                <p className="flex items-start gap-3 text-sm leading-6"><Check aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-primary" /> Importação de faturas, OFX e CSV</p>
+                <p className="flex items-start gap-3 text-sm leading-6"><Check aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-primary" /> Cartões e compromissos ilimitados</p>
                 <div className="pt-2"><AcquirePlanButton hasPremiumPlan={hasPremiumPlan} /></div>
               </CardContent>
             </Card>
