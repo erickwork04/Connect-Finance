@@ -78,6 +78,73 @@
 }
 
 @layer components {
+  .landing-hero {
+    background-image:
+      radial-gradient(ellipse at 76% 42%, rgba(85, 176, 46, 0.1), transparent 37%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 45%);
+  }
+
+  .landing-orbit {
+    position: absolute;
+    pointer-events: none;
+    border: 1px solid rgba(112, 202, 73, 0.08);
+    border-radius: 9999px;
+  }
+
+  .landing-orbit-one {
+    top: 5rem;
+    right: -10rem;
+    width: 34rem;
+    height: 34rem;
+  }
+
+  .landing-orbit-two {
+    top: 9rem;
+    right: -6rem;
+    width: 26rem;
+    height: 26rem;
+  }
+
+  .landing-reveal {
+    animation: landing-arrive 750ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+  }
+
+  .landing-float {
+    animation: landing-drift 8s ease-in-out 900ms infinite;
+  }
+
+  .landing-float-note {
+    animation: landing-drift 9s ease-in-out 1.4s infinite reverse;
+  }
+
+  @keyframes landing-arrive {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes landing-drift {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-7px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .landing-reveal,
+    .landing-float,
+    .landing-float-note {
+      animation: none;
+    }
+  }
+
   .app-shell-content {
     box-sizing: border-box;
     width: 100% !important;
