@@ -67,14 +67,14 @@ export default function CardPaymentAction({
           setOpen(true);
         }}
         title={canPay ? "Registrar um pagamento feito no banco" : "Não há saldo de fatura em aberto neste mês"}
-        className="min-h-11 w-full border border-blue-500 bg-blue-500 text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500"
+        className="min-h-11 w-full border border-primary bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500"
       >
         <CircleDollarSign aria-hidden="true" className="h-4 w-4" />
         {canPay ? "Pagar Fatura" : "Fatura em dia"}
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="w-[calc(100%-24px)] max-w-md border-slate-700 bg-[#0e1319] p-4 sm:p-6">
+        <DialogContent className="w-[calc(100%-24px)] max-w-md border-white/10 bg-[#141816] p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Pagar Fatura</DialogTitle>
             <DialogDescription>
@@ -86,7 +86,7 @@ export default function CardPaymentAction({
             <input type="hidden" name="cardId" value={cardId} />
             <input type="hidden" name="month" value={month} />
 
-            <section aria-label="Resumo da fatura" className="space-y-2 rounded-xl bg-slate-700/90 p-4 text-sm">
+            <section aria-label="Resumo da fatura" className="space-y-2 rounded-xl border border-white/10 bg-[#1c211e] p-4 text-sm">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-slate-300">Fatura atual em aberto:</span>
                 <strong className="tabular-nums text-white">{showLimits ? formatCurrency(outstanding) : mask}</strong>
@@ -114,7 +114,7 @@ export default function CardPaymentAction({
                 onChange={setPayment}
                 disabled={pending}
                 aria-describedby={`payment-help-${cardId}`}
-                className="h-11 border-slate-700 bg-slate-800 text-white focus-visible:ring-blue-400"
+                className="h-11 border-white/15 bg-[#1c211e] text-white focus-visible:ring-primary"
                 placeholder="R$ 0,00"
               />
               <p id={`payment-help-${cardId}`} className="text-xs text-slate-400">
@@ -133,7 +133,7 @@ export default function CardPaymentAction({
                     variant="secondary"
                     disabled={pending}
                     onClick={() => changePayment(percentage / 100)}
-                    className="min-h-10 bg-slate-800 text-slate-100 hover:bg-slate-700"
+                    className="min-h-10 bg-[#252c27] text-slate-100 hover:bg-[#2e3831]"
                   >
                     {percentage}%
                   </Button>
@@ -141,7 +141,7 @@ export default function CardPaymentAction({
               </div>
             ) : null}
 
-            <p aria-live="polite" className="rounded-xl bg-blue-100 px-3.5 py-3 text-sm font-medium text-blue-950">
+            <p aria-live="polite" className="rounded-xl border border-primary/25 bg-primary/10 px-3.5 py-3 text-sm font-medium text-emerald-200">
               Limite disponível após o pagamento: {showLimits && payment !== undefined ? formatCurrency(availableAfterPayment) : mask}
             </p>
 
@@ -152,10 +152,10 @@ export default function CardPaymentAction({
             ) : null}
 
             <DialogFooter className="flex-row gap-2 sm:space-x-0">
-              <Button type="button" variant="outline" disabled={pending} onClick={() => setOpen(false)} className="min-h-11 flex-1 border-slate-700 bg-transparent text-slate-100 hover:bg-slate-800">
+              <Button type="button" variant="outline" disabled={pending} onClick={() => setOpen(false)} className="min-h-11 flex-1 border-white/15 bg-transparent text-slate-100 hover:bg-[#1c211e]">
                 Cancelar
               </Button>
-              <Button type="submit" disabled={pending || !payment || payment <= 0 || payment > outstanding} className="min-h-11 flex-1 bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50">
+              <Button type="submit" disabled={pending || !payment || payment <= 0 || payment > outstanding} className="min-h-11 flex-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
                 {pending ? "Salvando..." : "Confirmar Pagamento"}
               </Button>
             </DialogFooter>

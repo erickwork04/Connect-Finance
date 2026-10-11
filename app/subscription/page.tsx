@@ -21,15 +21,16 @@ export default async function SubscriptionPage({ searchParams }: { searchParams:
   if (!userId) redirect("/login");
 
   const params = await searchParams;
+  const checkoutToken = params.checkout && /^[A-Za-z0-9._~-]{1,255}$/.test(params.checkout) ? params.checkout : null;
   const [client, billing, checkout] = await Promise.all([
     clerkClient(),
-    db.mercadoPagoSubscription.findFirst({
+    db.billingSubscription.findFirst({
       where: { userId, status: "ACTIVE" }, orderBy: { createdAt: "desc" },
-      select: { currentAmount: true, couponCode: true, couponRestored: true },
+      select: { currentAmount: true },
     }),
-    params.checkout && /^[a-f0-9-]{36}$/i.test(params.checkout)
-      ? db.mercadoPagoSubscription.findFirst({
-          where: { id: params.checkout, userId },
+    checkoutToken
+      ? db.billingSubscription.findFirst({
+          where: { userId, caktoCallbackToken: checkoutToken, provider: "CAKTO" },
           select: { id: true, status: true, firstPaymentApprovedAt: true },
         })
       : Promise.resolve(null),
@@ -41,8 +42,6 @@ export default async function SubscriptionPage({ searchParams }: { searchParams:
     <SubscriptionScreen
       hasPremiumPlan={hasPremiumPlan}
       monthlyAmount={billing ? Number(billing.currentAmount) : null}
-      activeCouponCode={billing?.couponCode ?? null}
-      couponRestored={billing?.couponRestored ?? false}
       checkout={checkout ? {
         id: checkout.id,
         status: normalizeCheckoutStatus(checkout.status),

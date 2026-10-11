@@ -15,15 +15,15 @@ export default function CardManagementActions({ card }: { card: CardView }) {
 
   return <>
     <div className="grid grid-cols-[minmax(0,1fr)_44px] gap-2">
-      <Button type="button" variant="outline" aria-label={`Editar cartão ${card.name}`} title="Editar cartão" onClick={() => setMode("edit")} className="min-h-11 border-slate-700 bg-slate-950 text-slate-200 hover:bg-slate-800">
+      <Button type="button" variant="outline" aria-label={`Editar cartão ${card.name}`} title="Editar cartão" onClick={() => setMode("edit")} className="min-h-11 border-white/15 bg-[#1c211e] text-slate-200 hover:bg-[#252c27]">
         <Pencil aria-hidden="true" /> Editar
       </Button>
-      <Button type="button" variant="outline" size="icon" aria-label={`Excluir cartão ${card.name}`} title="Excluir cartão" onClick={() => setMode("delete")} className="min-h-11 border-slate-700 bg-slate-950 text-rose-400 hover:bg-rose-950/40 hover:text-rose-300">
+      <Button type="button" variant="outline" size="icon" aria-label={`Excluir cartão ${card.name}`} title="Excluir cartão" onClick={() => setMode("delete")} className="min-h-11 border-slate-700 bg-[#1c211e] text-rose-400 hover:bg-rose-950/40 hover:text-rose-300">
         <Trash2 aria-hidden="true" />
       </Button>
     </div>
     <Dialog open={mode !== null} onOpenChange={(open) => { if (!open) setMode(null); }}>
-      <DialogContent className="border-slate-700 bg-[#0e1319]">
+      <DialogContent className="border-white/10 bg-[#141816]">
         <DialogHeader>
           <DialogTitle>{mode === "edit" ? `Editar ${card.name}` : `Remover ${card.name}?`}</DialogTitle>
           <DialogDescription>{mode === "edit" ? "Atualize os dados do cartão. A edição não altera o limite de cartões do plano." : "O cartão deixará de aparecer entre os ativos. Faturas e parcelamentos vinculados serão mantidos."}</DialogDescription>

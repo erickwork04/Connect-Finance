@@ -37,17 +37,16 @@ function SummaryCard({
   title: string;
   value: string;
   icon: typeof Wallet;
-  tone: "blue" | "red" | "green" | "slate";
+  tone: "red" | "green" | "slate";
 }) {
   const tones = {
-    blue: "text-blue-400",
     red: "text-rose-400",
     green: "text-emerald-400",
     slate: "text-slate-300",
   };
 
   return (
-    <section className="flex min-h-[104px] min-w-0 items-center justify-between gap-3 rounded-2xl border border-slate-700/80 bg-[#171c23] px-5 py-4 shadow-sm shadow-black/10">
+    <section className="flex min-h-[104px] min-w-0 items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#141816] px-5 py-4 shadow-sm shadow-black/10">
       <div className="min-w-0">
         <p className="text-sm text-slate-400">{title}</p>
         <p className={`mt-1 truncate text-xl font-bold tabular-nums sm:text-2xl ${tones[tone]}`}>
@@ -98,9 +97,9 @@ export default function CardsScreen({
               role="switch"
               aria-checked={showLimits}
               onClick={() => setShowLimits((visible) => !visible)}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-3 text-sm text-slate-300 transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-3 text-sm text-slate-300 transition hover:bg-[#1c211e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              <span className={`relative h-5 w-9 rounded-full transition-colors ${showLimits ? "bg-blue-500" : "bg-slate-600"}`}>
+              <span className={`relative h-5 w-9 rounded-full transition-colors ${showLimits ? "bg-primary" : "bg-slate-600"}`}>
                 <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${showLimits ? "translate-x-[18px]" : "translate-x-0.5"}`} />
               </span>
               {showLimits ? <Eye aria-hidden="true" className="h-4 w-4" /> : <EyeOff aria-hidden="true" className="h-4 w-4" />}
@@ -111,7 +110,7 @@ export default function CardsScreen({
         </section>
 
         <section aria-label="Resumo dos limites dos cartões" className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <SummaryCard title="Limite Total" value={summaryValue(limitTotal)} icon={CreditCard} tone="blue" />
+          <SummaryCard title="Limite Total" value={summaryValue(limitTotal)} icon={CreditCard} tone="green" />
           <SummaryCard title="Total Usado" value={summaryValue(limitUsed)} icon={Activity} tone="red" />
           <SummaryCard title="Limite Disponível" value={summaryValue(totalLimit.available)} icon={Wallet} tone="green" />
           <SummaryCard title="Uso Total" value={cards === null ? "Indisponível" : showLimits ? `${usagePercent.toFixed(1).replace(".", ",")}%` : masked} icon={Landmark} tone="green" />
@@ -137,13 +136,13 @@ export default function CardsScreen({
           </section>
         )}
 
-        <section className="rounded-2xl border border-slate-700/80 bg-[#171c23] p-4 sm:p-5">
+        <section className="rounded-2xl border border-white/10 bg-[#141816] p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="font-semibold text-white">Parcelas neste mês</h2>
               <p className="mt-1 text-sm text-slate-400">Compromissos vinculados aos cartões no período selecionado.</p>
             </div>
-            <Button asChild variant="outline" className="border-slate-600 bg-transparent text-slate-200 hover:bg-slate-800">
+            <Button asChild variant="outline" className="border-white/15 bg-transparent text-slate-200 hover:bg-[#1c211e]">
               <Link href={`/installments?month=${month}`}>Ver compras parceladas</Link>
             </Button>
           </div>
@@ -154,7 +153,7 @@ export default function CardsScreen({
           ) : (
             <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {installments.map((item) => (
-                <article key={item.id} className="flex min-w-0 items-start justify-between gap-3 rounded-xl border border-slate-700/70 bg-slate-900/50 p-3.5">
+                <article key={item.id} className="flex min-w-0 items-start justify-between gap-3 rounded-xl border border-white/10 bg-[#1c211e] p-3.5">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-slate-100">{item.description}</p>
                     <p className="mt-1 text-xs text-slate-500">

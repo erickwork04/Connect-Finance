@@ -12,16 +12,12 @@ import { formatCurrency } from "@/app/_utils/currency";
 interface SubscriptionScreenProps {
   hasPremiumPlan: boolean;
   monthlyAmount: number | null;
-  activeCouponCode: string | null;
-  couponRestored: boolean;
   checkout: { id: string; status: CheckoutStatus; paid: boolean } | null;
 }
 
 export default function SubscriptionScreen({
   hasPremiumPlan,
   monthlyAmount,
-  activeCouponCode,
-  couponRestored,
   checkout,
 }: SubscriptionScreenProps) {
   const currentPlan = hasPremiumPlan ? "Premium" : "Gratuito";
@@ -56,8 +52,6 @@ export default function SubscriptionScreen({
                 {hasPremiumPlan ? formatCurrency(monthlyAmount ?? 19.9) : "R$ 0,00"}
                 <span className="ml-1 text-sm font-normal text-muted-foreground">/mês</span>
               </p>
-              {hasPremiumPlan && activeCouponCode && monthlyAmount !== null
-                ? <p className="mt-1 text-xs text-primary">{couponRestored ? `Cupom ${activeCouponCode} usado no primeiro mês` : `Cupom ${activeCouponCode} aplicado`}</p> : null}
             </div>
           </CardContent>
         </Card>

@@ -47,7 +47,7 @@ function DayFormField({ name, title, initialValue }: { name: string; title: stri
 }
 
 export function CardForm({ onSuccess }: { onSuccess?: () => void } = {}) {
-  return <ActionForm action={createCard} submit="Adicionar cartão" onSuccess={onSuccess} submitClassName="!bg-blue-500 !text-white hover:!bg-blue-600">
+  return <ActionForm action={createCard} submit="Adicionar cartão" onSuccess={onSuccess}>
     <label className={`${label} sm:col-span-2`}>Nome do cartão<input name="name" required maxLength={80} className={field} placeholder="Ex.: Nubank Roxinho" /></label>
     <label className={`${label} sm:col-span-2`}>Banco ou instituição financeira<input name="brand" required maxLength={40} className={field} placeholder="Ex.: Nubank, Itaú, Banco do Brasil" /></label>
     <MoneyFormField name="limitTotal" title="Limite total" />
@@ -59,7 +59,7 @@ export function CardForm({ onSuccess }: { onSuccess?: () => void } = {}) {
 }
 
 export function CardEditForm({ card, onSuccess }: { card: { id: string; name: string; brand: string; limitTotal: number; closingDay: number; dueDay: number; isPrimary: boolean }; onSuccess?: () => void }) {
-  return <ActionForm action={updateCard} submit="Salvar alterações" onSuccess={onSuccess} submitClassName="!bg-blue-500 !text-white hover:!bg-blue-600">
+  return <ActionForm action={updateCard} submit="Salvar alterações" onSuccess={onSuccess}>
     <input type="hidden" name="cardId" value={card.id} />
     <label className={`${label} sm:col-span-2`}>Nome do cartão<input name="name" defaultValue={card.name} required maxLength={80} className={field} /></label>
     <label className={`${label} sm:col-span-2`}>Banco ou instituição financeira<input name="brand" defaultValue={card.brand} required maxLength={40} className={field} /></label>

@@ -158,63 +158,40 @@ model RecurringCommitment {
   @@index([userId, startMonth])
 }
 
-model Coupon {
-  id           String                    @id @default(uuid())
-  code         String                    @unique @db.VarChar(40)
-  type         CouponType
-  value        Decimal                   @db.Decimal(10, 2)
-  active       Boolean                   @default(true)
-  expiresAt    DateTime?
-  maxUses      Int?
-  currentUses  Int                       @default(0)
-  reservedUses Int                       @default(0)
-  firstCycleOnly Boolean                 @default(false)
-  createdAt    DateTime                  @default(now())
-  updatedAt    DateTime                  @updatedAt
-  usages       CouponUsage[]
-  subscriptions MercadoPagoSubscription[]
-}
-
-model CouponUsage {
-  id             String                   @id @default(uuid())
-  couponId       String
-  userId         String
-  subscriptionId String                   @unique
-  usedAt         DateTime                 @default(now())
-  coupon         Coupon                   @relation(fields: [couponId], references: [id], onDelete: Restrict)
-  subscription   MercadoPagoSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
-
-  @@unique([couponId, userId])
-  @@index([userId, usedAt])
-}
-
-model MercadoPagoSubscription {
+model BillingSubscription {
   id                     String                    @id @default(uuid())
   userId                 String
+  provider               BillingProvider           @default(MERCADO_PAGO)
   mercadoPagoId          String?                   @unique
-  couponId               String?
-  couponCode             String?
+  caktoCallbackToken     String?                   @unique
+  caktoProductId         String?
+  caktoOfferId           String?
+  caktoOrderId           String?                   @unique
+  providerEventAt        DateTime?
   baseAmount             Decimal                   @db.Decimal(10, 2)
   currentAmount          Decimal                   @db.Decimal(10, 2)
-  couponFirstCycleOnly   Boolean                   @default(false)
-  couponRestored         Boolean                   @default(false)
-  couponReserved         Boolean                   @default(false)
   status                 BillingSubscriptionStatus @default(CREATING)
   firstPaymentId         String?                   @unique
   firstPaymentApprovedAt DateTime?
   restoreLockUntil       DateTime?
   createdAt              DateTime                  @default(now())
   updatedAt              DateTime                  @updatedAt
-  coupon                 Coupon?                   @relation(fields: [couponId], references: [id], onDelete: Restrict)
-  usage                  CouponUsage?
-
   @@index([userId, createdAt])
-  @@index([couponId, couponReserved])
+  @@map("MercadoPagoSubscription")
 }
 
-enum CouponType {
-  PERCENTAGE
-  FIXED
+model CaktoWebhookEvent {
+  id               String   @id @default(uuid())
+  eventKey         String   @unique
+  providerEventId  String
+  eventType        String
+  productId        String?
+  outcome          String   @default("PENDING")
+  createdAt        DateTime @default(now())
+  processedAt      DateTime?
+
+  @@index([providerEventId, eventType])
+  @@index([createdAt])
 }
 
 enum BillingSubscriptionStatus {
@@ -224,6 +201,11 @@ enum BillingSubscriptionStatus {
   PAUSED
   CANCELLED
   FAILED
+}
+
+enum BillingProvider {
+  MERCADO_PAGO
+  CAKTO
 }
 
 enum InvoiceStatus {

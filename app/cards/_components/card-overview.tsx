@@ -52,7 +52,7 @@ export default function CardOverview({
   const overLimit = card.limitAvailable < 0;
 
   return (
-    <article className="flex min-w-0 flex-col rounded-2xl border border-slate-700/80 bg-[#171c23] p-4 shadow-sm shadow-black/10 sm:p-5">
+    <article className="flex min-w-0 flex-col rounded-2xl border border-white/10 bg-[#141816] p-4 shadow-sm shadow-black/10 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <span
@@ -68,8 +68,8 @@ export default function CardOverview({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          {card.isPrimary ? <span className="rounded-full border border-blue-400/30 bg-blue-400/10 px-2 py-1 text-[10px] font-medium text-blue-300">Principal</span> : null}
-          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${card.isActive ? "bg-blue-500/15 text-blue-300" : "bg-slate-700 text-slate-300"}`}>
+          {card.isPrimary ? <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-[10px] font-medium text-emerald-300">Principal</span> : null}
+          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${card.isActive ? "bg-primary/15 text-emerald-300" : "bg-slate-700 text-slate-300"}`}>
             {card.isActive ? "Ativo" : "Inativo"}
           </span>
         </div>
@@ -88,9 +88,9 @@ export default function CardOverview({
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={barPercent}
-          className="mt-2.5 h-2 overflow-hidden rounded-full bg-slate-800"
+          className="mt-2.5 h-2 overflow-hidden rounded-full bg-[#26302a]"
         >
-          <div className="h-full rounded-full bg-blue-500 transition-[width]" style={{ width: `${barPercent}%` }} />
+          <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${barPercent}%` }} />
         </div>
         <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-500">
           <span>0%</span>
@@ -101,7 +101,7 @@ export default function CardOverview({
         </div>
       </section>
 
-      <div className="mt-5 grid grid-cols-2 gap-4 border-t border-slate-700/70 pt-4">
+      <div className="mt-5 grid grid-cols-2 gap-4 border-t border-white/10 pt-4">
         <div>
           <p className="text-xs text-slate-500">Vencimento</p>
           <p className="mt-1 text-sm font-medium text-slate-200">Dia {card.dueDay}</p>
@@ -112,7 +112,7 @@ export default function CardOverview({
         </div>
       </div>
 
-      <div className="mt-4 rounded-xl border border-slate-700/70 bg-slate-900/45 p-3.5">
+      <div className="mt-4 rounded-xl border border-white/10 bg-[#1c211e] p-3.5">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs text-slate-500">Limite disponível</p>
@@ -130,13 +130,13 @@ export default function CardOverview({
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <div className="min-w-0 rounded-xl border border-slate-700/60 px-3 py-2.5">
+        <div className="min-w-0 rounded-xl border border-white/10 bg-[#1c211e]/60 px-3 py-2.5">
           <p className="text-[11px] text-slate-500">Fatura no mês</p>
           <p className="mt-1 truncate text-sm font-semibold tabular-nums text-slate-200">{money(card.invoiceAmount, showLimits)}</p>
           <p className="mt-0.5 text-[10px] text-slate-500">{card.invoiceStatusLabel}</p>
           {card.invoicePaidAmount > 0 ? <p className="mt-1 truncate text-[10px] font-medium tabular-nums text-emerald-400">Pago: {money(card.invoicePaidAmount, showLimits)}</p> : null}
         </div>
-        <div className="min-w-0 rounded-xl border border-slate-700/60 px-3 py-2.5">
+        <div className="min-w-0 rounded-xl border border-white/10 bg-[#1c211e]/60 px-3 py-2.5">
           <p className="text-[11px] text-slate-500">Próxima fatura</p>
           <p className="mt-1 truncate text-sm font-semibold tabular-nums text-slate-200">{money(card.nextInvoiceAmount, showLimits)}</p>
           <p className="mt-0.5 text-[10px] text-slate-500">{card.installmentsCount} parcelas ativas no mês</p>
