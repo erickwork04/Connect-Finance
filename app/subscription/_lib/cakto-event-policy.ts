@@ -37,15 +37,17 @@ export function matchesCaktoPayment(input: {
   amount: unknown;
   baseAmount: unknown;
   discount: unknown;
+  chargedFees?: unknown;
   expectedBaseAmount: number;
 }): boolean {
   const amountCents = moneyToCents(input.amount);
   const baseAmountCents = moneyToCents(input.baseAmount);
   const discountCents = input.discount == null ? 0 : moneyToCents(input.discount);
+  const chargedFeesCents = input.chargedFees == null ? 0 : moneyToCents(input.chargedFees);
   const expectedBaseCents = moneyToCents(input.expectedBaseAmount);
-  if (amountCents === null || baseAmountCents === null || discountCents === null || expectedBaseCents === null) return false;
-  return expectedBaseCents > 0 && amountCents > 0 && discountCents >= 0 &&
-    baseAmountCents === expectedBaseCents && amountCents + discountCents === baseAmountCents;
+  if (amountCents === null || baseAmountCents === null || discountCents === null || chargedFeesCents === null || expectedBaseCents === null) return false;
+  return expectedBaseCents > 0 && amountCents > 0 && discountCents >= 0 && chargedFeesCents >= 0 &&
+    baseAmountCents === expectedBaseCents && amountCents + discountCents === baseAmountCents + chargedFeesCents;
 }
 
 export function isNewerCaktoEvent(existing: Date | null, incoming: Date): boolean {

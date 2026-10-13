@@ -26,11 +26,13 @@ test("events for another product, non-subscription offer, or currency are reject
   assert.equal(matchesCaktoPlan({ ...valid, currency: "USD" }), false);
 });
 
-test("Cakto discounts are accepted only when the signed amounts reconcile to the plan price", () => {
+test("Cakto amounts reconcile to the plan price after discounts and provider fees", () => {
   assert.equal(matchesCaktoPayment({ amount: 19.9, baseAmount: 19.9, discount: "0.00", expectedBaseAmount: 19.9 }), true);
   assert.equal(matchesCaktoPayment({ amount: 14.93, baseAmount: 19.9, discount: "4.97", expectedBaseAmount: 19.9 }), true);
+  assert.equal(matchesCaktoPayment({ amount: 20.89, baseAmount: 19.9, discount: "0.00", chargedFees: "0.99", expectedBaseAmount: 19.9 }), true);
   assert.equal(matchesCaktoPayment({ amount: 14.93, baseAmount: 19.9, discount: "4.96", expectedBaseAmount: 19.9 }), false);
   assert.equal(matchesCaktoPayment({ amount: 14.93, baseAmount: 20, discount: "5.07", expectedBaseAmount: 19.9 }), false);
+  assert.equal(matchesCaktoPayment({ amount: 20.89, baseAmount: 19.9, discount: "0.00", chargedFees: "0.98", expectedBaseAmount: 19.9 }), false);
   assert.equal(matchesCaktoPayment({ amount: "14.93", baseAmount: 19.9, discount: 4.97, expectedBaseAmount: 19.9 }), true);
 });
 

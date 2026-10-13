@@ -9,6 +9,7 @@ type CaktoOrder = {
   amount?: unknown;
   baseAmount?: unknown;
   discount?: unknown;
+  charged_fees?: unknown;
   callback?: unknown;
   paidAt?: unknown;
   canceledAt?: unknown;
@@ -123,6 +124,7 @@ async function processOrder(eventType: string, rawOrder: unknown): Promise<void>
       amount: order.amount,
       baseAmount: order.baseAmount,
       discount: order.discount,
+      chargedFees: order.charged_fees,
       expectedBaseAmount: Number(record.baseAmount),
     })) {
       await markIgnored(event.id);
