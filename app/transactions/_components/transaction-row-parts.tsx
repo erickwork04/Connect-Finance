@@ -1,16 +1,32 @@
 import type { TransactionCategory, TransactionSource, TransactionType } from "@prisma/client";
-import { Banknote, CarFront, Clapperboard, GraduationCap, HeartPulse, House, Shapes, ShoppingBasket, type LucideIcon } from "lucide-react";
+import { Banknote, Brain, CarFront, Clapperboard, Code2, Droplets, Dumbbell, Fuel, Gift, GraduationCap, HeartPulse, House, Package, PartyPopper, Repeat2, Shapes, Shirt, ShoppingBasket, Sparkles, Utensils, Waves, Wifi, Wrench, Zap, type LucideIcon } from "lucide-react";
 import { TRANSACTION_CATEGORY_COLORS, TRANSACTION_CATEGORY_LABELS } from "@/app/_constanst/transactions";
 import { formatCurrency } from "@/app/_utils/currency";
 
 const CATEGORY_ICONS: Record<TransactionCategory, LucideIcon> = {
-  HOUSING: House,
-  TRANSPORTATION: CarFront,
-  FOOD: ShoppingBasket,
-  ENTERTAINMENT: Clapperboard,
-  HEALTH: HeartPulse,
   SALARY: Banknote,
+  HOME: House,
+  NECESSITIES: Package,
+  WATER: Droplets,
+  ELECTRICITY: Zap,
+  INTERNET: Wifi,
+  FOOD: ShoppingBasket,
+  TRANSPORTATION: CarFront,
+  GASOLINE: Fuel,
+  MECHANICS: Wrench,
+  HEALTH_PHARMACY: HeartPulse,
+  PSYCHOLOGIST: Brain,
+  GYM: Dumbbell,
   EDUCATION: GraduationCap,
+  DEVELOPMENT: Code2,
+  IFOOD: Utensils,
+  SUBSCRIPTIONS: Repeat2,
+  CLOTHING: Shirt,
+  BEAUTY_SALON: Sparkles,
+  LEISURE: Waves,
+  ENTERTAINMENT: Clapperboard,
+  GIFTS: Gift,
+  OCCASIONAL_EXPENSES: PartyPopper,
   OTHER: Shapes,
 };
 

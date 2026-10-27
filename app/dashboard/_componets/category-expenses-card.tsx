@@ -6,6 +6,7 @@ import CategoryFilter from "./category-filter";
 
 export default function CategoryExpensesCard({ data, period }: { data: DashboardData; period: CategoryPeriod }) {
   let displayedCategories = data.categories;
+  const aggregatedOther = data.categories.length > 6;
   if (data.categories.length > 6) {
     const leading = data.categories.filter((item) => item.category !== "OTHER").slice(0, 5);
     const leadingIds = new Set(leading.map((item) => item.category));
@@ -27,7 +28,7 @@ export default function CategoryExpensesCard({ data, period }: { data: Dashboard
     <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="flex items-center gap-2.5 text-base font-semibold sm:text-lg"><ChartNoAxesCombined className="h-5 w-5 text-primary" />Gastos por categoria</h2><CategoryFilter value={period} /></div>
     <div className="mt-5 grid items-center gap-6 sm:grid-cols-[minmax(0,220px)_1fr] lg:mx-auto lg:mt-4 lg:max-w-[700px] lg:grid-cols-[180px_minmax(0,1fr)] lg:gap-5">
       <div role="img" aria-label={`Total de despesas por categoria: ${formatCurrency(data.categoryTotal)}`} className="relative mx-auto aspect-square w-full max-w-[220px] rounded-full p-[24px] lg:max-w-[180px] lg:p-5" style={{ background: gradient }}><div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-[#141816] text-center"><span className="text-xs text-muted-foreground">Total de despesas</span><strong className="mt-1 break-words px-2 text-lg tabular-nums sm:text-xl lg:text-base">{formatCurrency(data.categoryTotal)}</strong></div></div>
-      {displayedCategories.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma despesa registrada neste período.</p> : <div className="space-y-2.5 lg:space-y-2">{displayedCategories.map((item) => <div key={item.category} className="flex min-w-0 items-center gap-2 text-xs sm:text-sm"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: TRANSACTION_CATEGORY_COLORS[item.category] }} /><span className="min-w-0 flex-1 truncate">{TRANSACTION_CATEGORY_LABELS[item.category]}</span><span className="text-muted-foreground">{item.percent.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</span><span className="min-w-[76px] text-right font-medium tabular-nums">{formatCurrency(item.amount)}</span></div>)}</div>}
+      {displayedCategories.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma despesa registrada neste período.</p> : <div className="space-y-2.5 lg:space-y-2">{displayedCategories.map((item) => <div key={item.category} className="flex min-w-0 items-center gap-2 text-xs sm:text-sm"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: TRANSACTION_CATEGORY_COLORS[item.category] }} /><span className="min-w-0 flex-1 truncate">{aggregatedOther && item.category === "OTHER" ? "Demais categorias" : TRANSACTION_CATEGORY_LABELS[item.category]}</span><span className="text-muted-foreground">{item.percent.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</span><span className="min-w-[76px] text-right font-medium tabular-nums">{formatCurrency(item.amount)}</span></div>)}</div>}
     </div>
   </section>;
 }

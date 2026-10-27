@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { db } from "@/app/_lib/prisma";
 import { getYearMonthRangeUtc } from "@/app/_lib/month-range";
 import { getPlanPermissions } from "@/app/_lib/plan-permissions";
+import { TRANSACTION_CATEGORY_LABELS } from "@/app/_constanst/transactions";
 
 export async function generateAiReportForUser(userId: string, month: string, onGenerated?: (report: string) => Promise<void>): Promise<string> {
   const permissions = await getPlanPermissions(userId);
@@ -19,7 +20,7 @@ export async function generateAiReportForUser(userId: string, month: string, onG
   }
 
   const summary = transactions.map((transaction) =>
-    `${transaction.date.toLocaleDateString("pt-BR")}-${transaction.name}-R$${transaction.amount}-${transaction.type}-${transaction.category}`,
+    `${transaction.date.toLocaleDateString("pt-BR")}-${transaction.name}-R$${transaction.amount}-${transaction.type}-${TRANSACTION_CATEGORY_LABELS[transaction.category]}`,
   ).join(";");
   const prompt = `Você é um especialista em gestão e organização de finanças pessoais.
 
@@ -63,7 +64,7 @@ Formate em Markdown claro, elegante e profissional em português brasileiro.`;
     if (transaction.type === "EXPENSE") categories[transaction.category] = (categories[transaction.category] ?? 0) + amount;
   }
   const expenses = Object.entries(categories).sort((left, right) => right[1] - left[1]).slice(0, 4)
-    .map(([category, amount]) => `- ${category}: R$ ${amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`).join("\n");
+    .map(([category, amount]) => `- ${TRANSACTION_CATEGORY_LABELS[category as keyof typeof TRANSACTION_CATEGORY_LABELS] ?? category}: R$ ${amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`).join("\n");
   const savingsRate = totals.DEPOSIT > 0 ? Math.round(((totals.DEPOSIT - totals.EXPENSE) / totals.DEPOSIT) * 100) : 0;
   const report = `### 📊 Relatório Financeiro Inteligente (${monthNumber}/${year})
 
