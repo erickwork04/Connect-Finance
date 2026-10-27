@@ -24,6 +24,7 @@ type ImportBatchInput = {
   source: TransactionSource;
   rows: ImportBatchRow[];
   invoiceMonth?: string;
+  cardInvoice?: { cardId: string; month: string; amount: number };
   shiftYearMonth: (month: string, offset: number) => string;
   monthlyDueDate: (month: string, day: number) => Date;
 };
@@ -34,6 +35,17 @@ type ImportBatchInput = {
  * bulk inserts so related commitments can reference the inserted rows.
  */
 export async function persistImportBatch(tx: Prisma.TransactionClient, input: ImportBatchInput) {
+  const existingInvoice = input.cardInvoice
+    ? await tx.cardInvoice.findUnique({
+        where: { cardId_month: { cardId: input.cardInvoice.cardId, month: input.cardInvoice.month } },
+        select: { id: true, paidAmount: true },
+      })
+    : null;
+  const paidAmount = Number(existingInvoice?.paidAmount ?? 0);
+  if (input.cardInvoice && input.cardInvoice.amount < paidAmount) {
+    return { installmentsAdded: 0, invoiceUpdateRejected: true };
+  }
+
   const installmentRows = input.rows
     .map((row, index) => ({ row, index }))
     .filter(({ row }) => row.installmentInfo !== undefined);
@@ -71,6 +83,7 @@ export async function persistImportBatch(tx: Prisma.TransactionClient, input: Im
       installmentAmount: row.amount,
       installmentCount: info.total,
       startMonth: input.shiftYearMonth(billedMonth, 1 - info.current),
+      cardId: input.cardInvoice?.cardId,
       sourceImportHash: row.importHash,
       status: "ACTIVE",
     });
@@ -89,18 +102,36 @@ export async function persistImportBatch(tx: Prisma.TransactionClient, input: Im
     if (row.importHash) knownHashes.add(row.importHash);
   }
 
-  await tx.importBatch.create({
-    data: {
-      id: input.batchId,
-      userId: input.userId,
-      fileName: input.fileName,
-      source: input.source,
-      totalTransactions: input.rows.length,
-    },
-  });
+  if (input.rows.length > 0) {
+    await tx.importBatch.create({
+      data: {
+        id: input.batchId,
+        userId: input.userId,
+        fileName: input.fileName,
+        source: input.source,
+        totalTransactions: input.rows.length,
+      },
+    });
+  }
   if (transactionRows.length) await tx.transaction.createMany({ data: transactionRows });
   if (plansToCreate.length) await tx.installmentPlan.createMany({ data: plansToCreate });
   if (commitmentsToCreate.length) await tx.monthlyCommitment.createMany({ data: commitmentsToCreate });
 
-  return { installmentsAdded: plansToCreate.length };
+  if (input.cardInvoice) {
+    const invoiceStatus = paidAmount >= input.cardInvoice.amount ? "PAID" : "OPEN";
+    await tx.cardInvoice.upsert({
+      where: { cardId_month: { cardId: input.cardInvoice.cardId, month: input.cardInvoice.month } },
+      create: {
+        userId: input.userId,
+        cardId: input.cardInvoice.cardId,
+        month: input.cardInvoice.month,
+        amount: input.cardInvoice.amount,
+        paidAmount,
+        status: invoiceStatus,
+      },
+      update: { amount: input.cardInvoice.amount, status: invoiceStatus },
+    });
+  }
+
+  return { installmentsAdded: plansToCreate.length, invoiceUpdateRejected: false };
 }

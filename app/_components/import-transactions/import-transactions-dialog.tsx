@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useTransition, useMemo } from "react";
+import { useState, useRef, useTransition, useMemo, useEffect } from "react";
+import Link from "next/link";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +27,7 @@ import { TRANSACTION_CATEGORY_OPTIONS } from "@/app/_constanst/transactions";
 import { formatCurrency } from "@/app/_utils/currency";
 import { processImportFile } from "@/app/_actions/import-transactions/process-file";
 import { confirmImportTransactions } from "@/app/_actions/import-transactions/confirm-import";
+import { getImportCardOptions } from "@/app/_actions/import-transactions/get-import-cards";
 import { DuplicateComparisonDialog } from "./duplicate-comparison-dialog";
 import { toast } from "sonner";
 import {
@@ -81,6 +83,12 @@ export function ImportTransactionsDialog({
     alreadyExisted: number;
   } | null>(null);
   const [batchId, setBatchId] = useState<string | null>(null);
+  const [cards, setCards] = useState<{ id: string; name: string }[]>([]);
+  const [cardsLoading, setCardsLoading] = useState(false);
+  const [cardsError, setCardsError] = useState(false);
+  const [cardsHasMore, setCardsHasMore] = useState(false);
+  const [cardsRequest, setCardsRequest] = useState(0);
+  const [selectedCardId, setSelectedCardId] = useState("");
 
   const [isPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -90,6 +98,33 @@ export function ImportTransactionsDialog({
     ? "Importar Extrato Bancário"
     : "Importar Fatura do Cartão";
   const acceptedFormats = isBank ? ".ofx, .csv" : ".csv";
+
+  useEffect(() => {
+    if (!isOpen || mode !== "CARD_INVOICE") return;
+    let active = true;
+    setCardsLoading(true);
+    setCardsError(false);
+    void getImportCardOptions()
+      .then((result) => {
+        if (!active) return;
+        if (!result.success) {
+          setCardsError(true);
+          return;
+        }
+        setCards(result.cards);
+        setCardsHasMore(result.hasMore);
+        setSelectedCardId((current) => result.cards.length === 1
+          ? result.cards[0].id
+          : result.cards.some((card) => card.id === current) ? current : "");
+      })
+      .catch(() => {
+        if (active) setCardsError(true);
+      })
+      .finally(() => {
+        if (active) setCardsLoading(false);
+      });
+    return () => { active = false; };
+  }, [isOpen, mode, cardsRequest]);
 
   // Reset dialog state on close
   const handleOpenChange = (open: boolean) => {
@@ -103,6 +138,8 @@ export function ImportTransactionsDialog({
       setActiveFilter("ALL");
       setPreviewPage(1);
       setBatchId(null);
+      setSelectedCardId("");
+      setCardsError(false);
     }
     setIsOpen(open);
   };
@@ -110,6 +147,11 @@ export function ImportTransactionsDialog({
   // Handle file drop/selection
   const handleFileChange = async (file: File) => {
     if (!file) return;
+
+    if (mode === "CARD_INVOICE" && !selectedCardId) {
+      toast.warning("Selecione o cartão usado nesta fatura antes de importar.");
+      return;
+    }
 
     // Check size limit: 5MB
     if (file.size > 5 * 1024 * 1024) {
@@ -218,6 +260,13 @@ export function ImportTransactionsDialog({
   const installmentCount = transactions.filter((t) => t.installmentInfo).length;
 
   const selectedCount = transactions.filter((t) => t.selected).length;
+  const invoiceTotalCents = transactions.reduce((total, transaction) => {
+    const cents = Math.round(transaction.amount * 100);
+    return total + (transaction.type === "EXPENSE" ? cents : transaction.type === "DEPOSIT" ? -cents : 0);
+  }, 0);
+  const estimatedInvoiceTotal = Math.max(0, invoiceTotalCents) / 100;
+  const selectedCard = cards.find((card) => card.id === selectedCardId);
+  const canSelectFile = mode !== "CARD_INVOICE" || (!cardsLoading && Boolean(selectedCardId));
 
   // Filtered list
   const filteredTransactions = useMemo(() => {
@@ -248,7 +297,7 @@ export function ImportTransactionsDialog({
   const handleConfirmImport = () => {
     setImportError("");
     const toImport = transactions.filter((t) => t.selected);
-    if (toImport.length === 0) {
+    if (toImport.length === 0 && !(mode === "CARD_INVOICE" && transactions.length > 0)) {
       toast.warning("Selecione pelo menos uma transação para importar.");
       return;
     }
@@ -260,8 +309,10 @@ export function ImportTransactionsDialog({
           transactions.length,
           batchId || undefined,
           selectedFile?.name,
-          toImport[0]?.source,
+          transactions[0]?.source,
           invoiceMonth,
+          mode === "CARD_INVOICE" ? selectedCardId : undefined,
+          mode === "CARD_INVOICE" ? estimatedInvoiceTotal : undefined,
         );
         if (!result.success) {
           setImportError(result.errorMessage || "Falha ao salvar. Revise e tente novamente.");
@@ -276,7 +327,9 @@ export function ImportTransactionsDialog({
           alreadyExisted: result.alreadyExistedCount,
         });
         setStep("SUCCESS");
-        toast.success(`${result.importedCount} transações importadas com sucesso!`);
+        toast.success(mode === "CARD_INVOICE"
+          ? `Fatura de ${formatCurrency(estimatedInvoiceTotal)} registrada em ${selectedCard?.name ?? "seu cartão"}.`
+          : `${result.importedCount} transações importadas com sucesso!`);
       } catch {
         console.error("Error importing transactions.");
         setImportError("Falha de conexão ao importar. Suas seleções foram mantidas; tente novamente.");
@@ -322,6 +375,35 @@ export function ImportTransactionsDialog({
                 </div>
               </DialogHeader>
 
+              {mode === "CARD_INVOICE" ? (
+                <div className="mt-4 space-y-2">
+                  <label htmlFor="import-credit-card" className="block text-sm font-medium text-foreground">Cartão usado nesta fatura <span aria-hidden="true" className="text-rose-400">*</span></label>
+                  {cardsLoading ? (
+                    <p role="status" aria-live="polite" className="rounded-lg border border-border bg-muted/20 px-3 py-3 text-sm text-muted-foreground">Carregando seus cartões...</p>
+                  ) : cardsError ? (
+                    <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-500/20 bg-rose-500/5 px-3 py-3 text-sm text-rose-300">
+                      <span>Não foi possível carregar seus cartões.</span>
+                      <Button type="button" variant="outline" onClick={() => setCardsRequest((request) => request + 1)} className="min-h-10 border-white/15">Tentar novamente</Button>
+                    </div>
+                  ) : cards.length === 0 ? (
+                    <p className="rounded-lg border border-border bg-muted/20 px-3 py-3 text-sm text-muted-foreground">Cadastre um cartão antes de importar uma fatura. <Link href="/cards" className="font-medium text-primary underline underline-offset-4">Ir para cartões</Link></p>
+                  ) : (
+                    <>
+                      <Select value={selectedCardId} onValueChange={setSelectedCardId}>
+                        <SelectTrigger id="import-credit-card" aria-label="Cartão usado nesta fatura" className="h-11 w-full border-border bg-background">
+                          <SelectValue placeholder="Selecione o cartão" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {cards.map((card) => <SelectItem key={card.id} value={card.id}>{card.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      {cardsHasMore ? <p className="text-xs text-muted-foreground">A lista mostra os primeiros 100 cartões ativos. Se o cartão não aparecer, arquive os cartões que não usa mais.</p> : null}
+                      <p className="text-xs text-muted-foreground">Mês da fatura: {invoiceMonth?.slice(5)}/{invoiceMonth?.slice(0, 4)}. O total importado reduzirá o limite disponível deste cartão.</p>
+                    </>
+                  )}
+                </div>
+              ) : null}
+
               {/* Drag & Drop Area */}
               <div
                 onDragOver={(e) => {
@@ -332,11 +414,12 @@ export function ImportTransactionsDialog({
                 onDrop={(e) => {
                   e.preventDefault();
                   setIsDragOver(false);
-                  if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                  if (canSelectFile && e.dataTransfer.files && e.dataTransfer.files[0]) {
                     handleFileChange(e.dataTransfer.files[0]);
                   }
                 }}
-                className={`relative mt-4 flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 sm:p-8 text-center transition-all ${
+                aria-disabled={!canSelectFile}
+                className={`relative mt-4 flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 sm:p-8 text-center transition-all ${!canSelectFile ? "cursor-not-allowed opacity-60" : ""} ${
                   isDragOver
                     ? "border-primary bg-primary/5"
                     : "border-border hover:border-muted-foreground/50 bg-muted/20"
@@ -347,6 +430,7 @@ export function ImportTransactionsDialog({
                   type="file"
                   accept={acceptedFormats}
                   className="hidden"
+                  disabled={!canSelectFile}
                   onChange={(e) => {
                     if (e.target.files && e.target.files[0]) {
                       handleFileChange(e.target.files[0]);
@@ -363,10 +447,11 @@ export function ImportTransactionsDialog({
                 </p>
                 <Button
                   type="button"
+                  disabled={!canSelectFile}
                   onClick={() => fileInputRef.current?.click()}
                   className="mt-3 rounded-full bg-primary font-bold text-primary-foreground hover:bg-primary/90 text-xs sm:text-sm h-9 sm:h-10 px-4 sm:px-6"
                 >
-                  Selecionar arquivo
+                  {mode === "CARD_INVOICE" && !selectedCardId ? "Selecione um cartão primeiro" : "Selecionar arquivo"}
                 </Button>
                 {processError ? <div className="mt-3 w-full space-y-2" role="alert" aria-live="assertive">
                   <p className="text-sm text-rose-300">{processError}</p>
@@ -486,6 +571,8 @@ export function ImportTransactionsDialog({
                     )}
                   </div>
                 </div>
+
+                {mode === "CARD_INVOICE" ? <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-foreground/90">Cartão: <strong>{selectedCard?.name ?? "Cartão selecionado"}</strong> · Total da fatura: <strong>{formatCurrency(estimatedInvoiceTotal)}</strong><span className="mt-1 block text-muted-foreground">O total considera todos os lançamentos do arquivo, mesmo os que você desmarcar para não importar.</span></div> : null}
 
                 {/* Filter and Selection Bar */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
@@ -905,7 +992,7 @@ export function ImportTransactionsDialog({
                   <Button
                     type="button"
                     onClick={handleConfirmImport}
-                    disabled={selectedCount === 0 || isPending}
+                    disabled={(selectedCount === 0 && mode !== "CARD_INVOICE") || isPending}
                     className="flex-1 sm:flex-initial h-10 rounded-full font-bold text-xs sm:text-sm bg-primary text-primary-foreground hover:bg-primary/90 min-w-[160px]"
                   >
                     {isPending ? (
@@ -914,7 +1001,9 @@ export function ImportTransactionsDialog({
                         Importando {selectedCount} transações...
                       </>
                     ) : (
-                      `Importar selecionadas (${selectedCount})`
+                      mode === "CARD_INVOICE" && selectedCount === 0
+                        ? "Registrar fatura sem novas transações"
+                        : `Importar selecionadas (${selectedCount})`
                     )}
                   </Button>
                 </div>
@@ -931,11 +1020,12 @@ export function ImportTransactionsDialog({
 
               <div className="space-y-1">
                 <h3 className="text-lg sm:text-xl font-bold text-foreground">
-                  Extrato processado com sucesso!
+                  {mode === "CARD_INVOICE" ? "Fatura registrada com sucesso!" : "Extrato processado com sucesso!"}
                 </h3>
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                  Suas transações foram salvas e já estão refletidas nos seus
-                  relatórios e dashboard.
+                  {mode === "CARD_INVOICE"
+                    ? `Fatura de ${formatCurrency(estimatedInvoiceTotal)} registrada em ${selectedCard?.name ?? "seu cartão"}; o limite disponível já foi atualizado.`
+                    : "Suas transações foram salvas e já estão refletidas nos seus relatórios e dashboard."}
                 </p>
               </div>
 
