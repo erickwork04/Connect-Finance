@@ -4,24 +4,42 @@ import { getYearMonthRangeUtc } from "@/app/_lib/month-range";
 import { getPlanPermissions } from "@/app/_lib/plan-permissions";
 import { TRANSACTION_CATEGORY_LABELS } from "@/app/_constanst/transactions";
 
+const REPORT_TRANSACTION_SAMPLE_LIMIT = 200;
+
 export async function generateAiReportForUser(userId: string, month: string, onGenerated?: (report: string) => Promise<void>): Promise<string> {
   const permissions = await getPlanPermissions(userId);
   if (!permissions.isPremium) throw Object.assign(new Error("Premium required"), { code: "SUBSCRIPTION_REQUIRED" });
 
   const [year, monthNumber] = month.split("-");
-  const transactions = await db.transaction.findMany({
-    where: { userId, date: getYearMonthRangeUtc(month) },
-    select: { name: true, amount: true, type: true, category: true, date: true },
-  });
-  if (!transactions.length) {
+  const where = { userId, date: getYearMonthRangeUtc(month) };
+  const [transactions, typeTotals, categoryTotals] = await Promise.all([
+    db.transaction.findMany({
+      where,
+      orderBy: [{ date: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+      take: REPORT_TRANSACTION_SAMPLE_LIMIT,
+      select: { name: true, amount: true, type: true, category: true, date: true },
+    }),
+    db.transaction.groupBy({ where, by: ["type"], _sum: { amount: true }, _count: { _all: true } }),
+    db.transaction.groupBy({ where: { ...where, type: "EXPENSE" }, by: ["category"], _sum: { amount: true } }),
+  ]);
+  const transactionCount = typeTotals.reduce((count, item) => count + item._count._all, 0);
+  if (!transactionCount) {
     const report = `### Relatório Financeiro - Mês ${monthNumber}/${year}\n\nNenhuma transação foi registrada para este mês. Adicione receitas e despesas para receber insights detalhados.`;
     await onGenerated?.(report);
     return report;
   }
 
-  const summary = transactions.map((transaction) =>
+  const totals = { DEPOSIT: 0, EXPENSE: 0, INVESTMENT: 0 };
+  for (const item of typeTotals) totals[item.type] = Number(item._sum.amount ?? 0);
+  const topCategories = categoryTotals.sort((left, right) => Number(right._sum.amount ?? 0) - Number(left._sum.amount ?? 0)).slice(0, 8);
+  const summary = [
+    `Totais exatos do perÃ­odo: receitas R$ ${totals.DEPOSIT.toFixed(2)}, despesas R$ ${totals.EXPENSE.toFixed(2)}, investimentos R$ ${totals.INVESTMENT.toFixed(2)}.`,
+    `TransaÃ§Ãµes no perÃ­odo: ${transactionCount}. Categorias de maior despesa: ${topCategories.map((item) => `${TRANSACTION_CATEGORY_LABELS[item.category]} R$ ${Number(item._sum.amount ?? 0).toFixed(2)}`).join("; ") || "nenhuma"}.`,
+    `Amostra de atÃ© ${transactions.length} lanÃ§amentos recentes (de ${transactionCount} no total):`,
+    ...transactions.map((transaction) =>
     `${transaction.date.toLocaleDateString("pt-BR")}-${transaction.name}-R$${transaction.amount}-${transaction.type}-${TRANSACTION_CATEGORY_LABELS[transaction.category]}`,
-  ).join(";");
+    ),
+  ].join("\n");
   const prompt = `Você é um especialista em gestão e organização de finanças pessoais.
 
 Gere um relatório completo com insights estruturados sobre as finanças do usuário, incluindo:
@@ -56,15 +74,8 @@ Formate em Markdown claro, elegante e profissional em português brasileiro.`;
     }
   }
 
-  const totals = { DEPOSIT: 0, EXPENSE: 0, INVESTMENT: 0 };
-  const categories: Record<string, number> = {};
-  for (const transaction of transactions) {
-    const amount = Number(transaction.amount) || 0;
-    totals[transaction.type] += amount;
-    if (transaction.type === "EXPENSE") categories[transaction.category] = (categories[transaction.category] ?? 0) + amount;
-  }
-  const expenses = Object.entries(categories).sort((left, right) => right[1] - left[1]).slice(0, 4)
-    .map(([category, amount]) => `- ${TRANSACTION_CATEGORY_LABELS[category as keyof typeof TRANSACTION_CATEGORY_LABELS] ?? category}: R$ ${amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`).join("\n");
+  const expenses = topCategories.slice(0, 4)
+    .map((item) => `- ${TRANSACTION_CATEGORY_LABELS[item.category]}: R$ ${Number(item._sum.amount ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`).join("\n");
   const savingsRate = totals.DEPOSIT > 0 ? Math.round(((totals.DEPOSIT - totals.EXPENSE) / totals.DEPOSIT) * 100) : 0;
   const report = `### 📊 Relatório Financeiro Inteligente (${monthNumber}/${year})
 

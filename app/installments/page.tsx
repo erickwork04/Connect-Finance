@@ -7,6 +7,7 @@ import PageHeader from "@/app/_components/page-header";
 import FeatureEmptyState from "@/app/_components/feature-empty-state";
 import { db } from "@/app/_lib/prisma";
 import { monthsBetween, resolveYearMonth, shiftYearMonth } from "@/app/_lib/month-range";
+import { activeInstallmentWindow } from "@/app/_lib/installment-window";
 import { ensureCommitmentOccurrences } from "@/app/_lib/commitments";
 import { formatCurrency } from "@/app/_utils/currency";
 import { clampPage, parsePagination } from "@/app/_lib/pagination";
@@ -28,21 +29,18 @@ export default async function InstallmentsPage({ searchParams }: { searchParams:
   const total = await db.installmentPlan.count({ where });
   const page = clampPage(pagination.page, total, pagination.pageSize);
   if (page !== pagination.page || (typeof params.pageSize === "string" ? params.pageSize : undefined) !== String(pagination.pageSize)) redirect(`/installments?month=${month}&page=${page}&pageSize=${pagination.pageSize}`);
-  const metricPlans = await db.installmentPlan.groupBy({ by: ["startMonth", "installmentCount"], where: { userId, status: "ACTIVE", startMonth: { gte: shiftYearMonth(month, -119), lte: shiftYearMonth(month, 1) } }, _sum: { installmentAmount: true }, _count: { _all: true } });
-  const activeFor = (targetMonth: string) => metricPlans.reduce((total, group) => {
-    const current = monthsBetween(group.startMonth, targetMonth) + 1;
-    return current >= 1 && current <= group.installmentCount ? total + Number(group._sum.installmentAmount ?? 0) : total;
-  }, 0);
-  const activeCount = metricPlans.reduce((total, group) => {
-    const current = monthsBetween(group.startMonth, month) + 1;
-    return current >= 1 && current <= group.installmentCount ? total + group._count._all : total;
-  }, 0);
+  const nextMonth = shiftYearMonth(month, 1);
+  const [currentMetrics, nextMetrics] = await Promise.all([
+    db.installmentPlan.aggregate({ where: { userId, status: "ACTIVE", ...activeInstallmentWindow(month, shiftYearMonth) }, _sum: { installmentAmount: true }, _count: { _all: true } }),
+    db.installmentPlan.aggregate({ where: { userId, status: "ACTIVE", ...activeInstallmentWindow(nextMonth, shiftYearMonth) }, _sum: { installmentAmount: true } }),
+  ]);
+  const activeCount = currentMetrics._count._all;
   const [plans, cards] = await Promise.all([
     db.installmentPlan.findMany({ where, select: { id: true, description: true, totalAmount: true, installmentAmount: true, installmentCount: true, startMonth: true, status: true, card: { select: { name: true } } }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip: (pagination.page - 1) * pagination.pageSize, take: pagination.pageSize }),
     db.creditCard.findMany({ where: { userId, isActive: true }, select: { id: true, name: true }, orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }] }),
   ]);
   const items = plans.map((plan) => ({ ...plan, current: monthsBetween(plan.startMonth, month) + 1 }));
-  const monthlyTotal = activeFor(month);
+  const monthlyTotal = Number(currentMetrics._sum.installmentAmount ?? 0);
 
   return <><Navbar /><main className="app-shell-content mx-auto w-full max-w-[1680px] space-y-5 px-4 py-5 sm:px-6 sm:py-6 xl:px-8">
     <PageHeader title="Compras parceladas" actions={<InstallmentsActions cards={cards} month={month} />} />
@@ -50,7 +48,7 @@ export default async function InstallmentsPage({ searchParams }: { searchParams:
     <section className="grid gap-3 sm:grid-cols-3">
       <div className="rounded-xl border border-border bg-[#141816] p-4"><p className="text-xs text-muted-foreground">Compras ativas</p><p className="mt-1 text-2xl font-semibold tabular-nums">{activeCount}</p></div>
       <div className="rounded-xl border border-border bg-[#141816] p-4"><p className="text-xs text-muted-foreground">Compromisso deste mês</p><p className="mt-1 text-2xl font-semibold tabular-nums text-amber-300">{formatCurrency(monthlyTotal)}</p></div>
-      <div className="rounded-xl border border-border bg-[#141816] p-4"><p className="text-xs text-muted-foreground">Próximo mês</p><p className="mt-1 text-2xl font-semibold tabular-nums">{formatCurrency(activeFor(shiftYearMonth(month, 1)))}</p></div>
+      <div className="rounded-xl border border-border bg-[#141816] p-4"><p className="text-xs text-muted-foreground">Próximo mês</p><p className="mt-1 text-2xl font-semibold tabular-nums">{formatCurrency(Number(nextMetrics._sum.installmentAmount ?? 0))}</p></div>
     </section>
     {items.length === 0 ? <FeatureEmptyState icon={<CalendarClock className="h-6 w-6" />} title="Nenhuma compra parcelada" description="Cadastre uma compra para acompanhar as parcelas mês a mês e reservar esse valor no saldo disponível." /> : <section className="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-3">
       {items.map((item) => {

@@ -89,7 +89,7 @@ export default function CardPaymentAction({
         {canPay ? "Registrar pagamento" : "Fatura em dia"}
       </Button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(nextOpen) => { if (!pending) setOpen(nextOpen); }}>
         <DialogContent closeDisabled={pending} className="w-[calc(100%-24px)] max-w-md border-white/10 bg-[#141816] p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Registrar pagamento da fatura</DialogTitle>

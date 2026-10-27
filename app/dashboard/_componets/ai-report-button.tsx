@@ -35,6 +35,8 @@ const AiReportButton = ({ month }: AiReportButtonProps) => {
   const [reportJobId, setReportJobId] = useState<string | null>(null);
   const [reportJobStatus, setReportJobStatus] = useState("QUEUED");
   const [reportProgress, setReportProgress] = useState(5);
+  const [pollConnectionIssue, setPollConnectionIssue] = useState(false);
+  const [pollRetry, setPollRetry] = useState(0);
   const requestIdRef = useRef<string | null>(null);
   const storageKey = `connectfinance.aiReportJob.${month}`;
 
@@ -50,9 +52,15 @@ const AiReportButton = ({ month }: AiReportButtonProps) => {
     if (!reportJobId) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let requestTimeout: ReturnType<typeof setTimeout> | undefined;
+    let controller: AbortController | undefined;
     const poll = async () => {
       try {
-        const response = await fetch(`/api/jobs/${encodeURIComponent(reportJobId)}`, { cache: "no-store" });
+        controller = new AbortController();
+        requestTimeout = setTimeout(() => controller?.abort(), 10_000);
+        const response = await fetch(`/api/jobs/${encodeURIComponent(reportJobId)}`, { cache: "no-store", signal: controller.signal });
+        clearTimeout(requestTimeout);
+        setPollConnectionIssue(false);
         if (!response.ok) {
           if (response.status === 401 || response.status === 404) {
             setReportError("Não foi possível consultar o estado deste relatório. Entre novamente e tente gerar outro.");
@@ -87,16 +95,22 @@ const AiReportButton = ({ month }: AiReportButtonProps) => {
         }
         timer = setTimeout(poll, 1500);
       } catch {
-        if (!cancelled) timer = setTimeout(poll, 3000);
+        if (!cancelled) {
+          setPollConnectionIssue(true);
+          timer = setTimeout(poll, 3000);
+        }
+      } finally {
+        if (requestTimeout) clearTimeout(requestTimeout);
       }
     };
     void poll();
-    return () => { cancelled = true; if (timer) clearTimeout(timer); };
-  }, [reportJobId, storageKey]);
+    return () => { cancelled = true; if (timer) clearTimeout(timer); if (requestTimeout) clearTimeout(requestTimeout); controller?.abort(); };
+  }, [pollRetry, reportJobId, storageKey]);
 
   const handleGenerateAiReportClick = async () => {
     try {
       setReportError("");
+      setPollConnectionIssue(false);
       setReportIsLoading(true);
 
       requestIdRef.current ??= crypto.randomUUID();
@@ -178,7 +192,8 @@ const AiReportButton = ({ month }: AiReportButtonProps) => {
           </DialogDescription>
         </DialogHeader>
 
-        {reportIsLoanding ? <div role="status" aria-live="polite" className="flex items-center gap-3 rounded-lg border border-border p-4 text-sm text-muted-foreground"><Loader2Icon aria-hidden="true" className="h-5 w-5 motion-safe:animate-spin motion-reduce:animate-none" />Gerando o relatório financeiro deste mês...</div> : null}
+        {reportIsLoanding ? <div role="status" aria-live="polite" className="flex items-center gap-3 rounded-lg border border-border p-4 text-sm text-muted-foreground"><Loader2Icon aria-hidden="true" className="h-5 w-5 motion-safe:animate-spin motion-reduce:animate-none" />{pollConnectionIssue ? "Conexão instável ao consultar o relatório. Tentaremos novamente automaticamente." : "Gerando o relatório financeiro deste mês..."}</div> : null}
+        {reportIsLoanding && pollConnectionIssue ? <Button type="button" variant="outline" onClick={() => setPollRetry((attempt) => attempt + 1)} className="min-h-11">Tentar consultar agora</Button> : null}
         {reportIsLoanding ? <div className="space-y-2"><div className="flex justify-between text-xs text-muted-foreground"><span>{reportJobStatus === "QUEUED" ? "Aguardando processamento" : "Analisando suas transações"}</span><span>{reportProgress}%</span></div><div role="progressbar" aria-label="Progresso da geração do relatório" aria-valuemin={0} aria-valuemax={100} aria-valuenow={reportProgress} className="h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-primary transition-[width] motion-reduce:transition-none" style={{ width: `${reportProgress}%` }} /></div></div> : null}
         {reportError ? <div className="space-y-3 rounded-lg border border-rose-500/30 bg-rose-500/10 p-4" role="alert" aria-live="assertive"><p className="text-sm text-rose-300">{reportError}</p><Button type="button" variant="outline" disabled={reportIsLoanding} onClick={handleGenerateAiReportClick} className="min-h-11">Tentar gerar novamente</Button></div> : null}
 

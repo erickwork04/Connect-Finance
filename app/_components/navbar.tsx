@@ -19,6 +19,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { getNavHref, isNavActive, NAV_ITEMS } from "../_lib/navigation";
 import MonthSelector from "./month-selector";
+import ActionTooltip from "./action-tooltip";
 import {
   Dialog,
   DialogContent,
@@ -115,23 +116,29 @@ export default function Navbar() {
       <header className="fixed inset-x-0 top-0 z-30 h-28 border-b border-white/10 bg-[#171c23] px-4 sm:px-6 md:h-16 lg:left-64 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
-            <button
-              type="button"
-              aria-label="Abrir menu de navegação"
-              aria-expanded={mobileMenuOpen}
-              aria-controls="mobile-navigation"
-              onClick={() => setMobileMenuOpen(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-700 text-slate-300 transition hover:bg-[#1c211e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
-            >
-              <Menu aria-hidden="true" className="h-5 w-5" />
-            </button>
+            <ActionTooltip content="Abrir menu de navegação">
+              <button
+                type="button"
+                aria-label="Abrir menu de navegação"
+                aria-expanded={mobileMenuOpen}
+                aria-controls="mobile-navigation"
+                onClick={() => setMobileMenuOpen(true)}
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-700 text-slate-300 transition hover:bg-[#1c211e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
+              >
+                <Menu aria-hidden="true" className="h-5 w-5" />
+              </button>
+            </ActionTooltip>
             <div className="lg:hidden"><Brand month={month} /></div>
             <div className="hidden w-[220px] md:block lg:w-[240px]">
               <MonthSelector />
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-3">
-            <UserButton />
+            <ActionTooltip content="Abrir menu da conta">
+              <span className="inline-flex">
+                <UserButton />
+              </span>
+            </ActionTooltip>
           </div>
         </div>
         <div className="pb-3 md:hidden">

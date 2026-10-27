@@ -6,6 +6,7 @@ import { invoiceRemainingAmount } from "@/app/_lib/card-invoice";
 import { monthsBetween, resolveYearMonth, shiftYearMonth } from "@/app/_lib/month-range";
 import { clampPage, parsePagination } from "@/app/_lib/pagination";
 import { getPlanPermissions } from "@/app/_lib/plan-permissions";
+import { activeInstallmentWindow } from "@/app/_lib/installment-window";
 import CardsScreen from "./_components/cards-screen";
 
 export const dynamic = "force-dynamic";
@@ -31,33 +32,28 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
   if (page !== pagination.page || (typeof params.pageSize === "string" ? params.pageSize : undefined) !== String(pagination.pageSize)) redirect(`/cards?month=${month}&page=${page}&pageSize=${pagination.pageSize}`);
 
   const nextMonth = shiftYearMonth(month, 1);
-  const oldestActiveStart = shiftYearMonth(month, -119);
-  const [records, openInvoiceTotals, installmentGroups, installmentRows, limitTotals, permissions] = await Promise.all([
+  const [records, openInvoiceTotals, limitTotals, permissions] = await Promise.all([
     optional(db.creditCard.findMany({ where: cardsWhere, select: { id: true, name: true, brand: true, isPrimary: true, isActive: true, limitTotal: true, closingDay: true, dueDay: true }, orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }, { id: "asc" }], skip: (page - 1) * pagination.pageSize, take: pagination.pageSize })),
     optional(db.cardInvoice.aggregate({ where: { userId, status: "OPEN" }, _sum: { amount: true, paidAmount: true } })),
-    optional(db.installmentPlan.groupBy({ by: ["cardId", "startMonth", "installmentCount"], where: { userId, status: "ACTIVE", cardId: { not: null }, startMonth: { gte: oldestActiveStart, lte: month } }, _count: { _all: true } })),
-    optional(db.installmentPlan.findMany({ where: { userId, status: "ACTIVE", startMonth: { gte: oldestActiveStart, lte: month } }, select: { id: true, description: true, installmentAmount: true, installmentCount: true, startMonth: true, card: { select: { name: true } } }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 40 })),
     optional(db.creditCard.aggregate({ where: cardsWhere, _sum: { limitTotal: true } })),
     getPlanPermissions(userId),
   ]);
-  if (!records || !openInvoiceTotals || !installmentGroups || !installmentRows || !limitTotals) {
+  if (!records || !openInvoiceTotals || !limitTotals) {
     return <CardsScreen cards={null} installments={null} month={month} totalCards={total} totalLimit={0} totalUsed={0} page={page} pageSize={pagination.pageSize} />;
   }
   const cardIds = records.map((record) => record.id);
-  const [invoiceUse, currentInvoices] = await Promise.all([
+  const [invoiceUse, currentInvoices, installmentGroups, installmentRows] = await Promise.all([
     cardIds.length ? optional(db.cardInvoice.groupBy({ by: ["cardId"], where: { userId, status: "OPEN", cardId: { in: cardIds } }, _sum: { amount: true, paidAmount: true } })) : Promise.resolve([]),
     cardIds.length ? optional(db.cardInvoice.findMany({ where: { userId, cardId: { in: cardIds }, month: { in: [month, nextMonth] } }, select: { cardId: true, month: true, amount: true, paidAmount: true, status: true } })) : Promise.resolve([]),
+    cardIds.length ? optional(db.installmentPlan.groupBy({ by: ["cardId"], where: { userId, status: "ACTIVE", cardId: { in: cardIds }, ...activeInstallmentWindow(month, shiftYearMonth) }, _count: { _all: true } })) : Promise.resolve([]),
+    optional(db.installmentPlan.findMany({ where: { userId, status: "ACTIVE", ...activeInstallmentWindow(month, shiftYearMonth) }, select: { id: true, description: true, installmentAmount: true, installmentCount: true, startMonth: true, card: { select: { name: true } } }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 4 })),
   ]);
-  if (!invoiceUse || !currentInvoices) return <CardsScreen cards={null} installments={null} month={month} totalCards={total} totalLimit={0} totalUsed={0} page={page} pageSize={pagination.pageSize} />;
+  if (!invoiceUse || !currentInvoices || !installmentGroups || !installmentRows) return <CardsScreen cards={null} installments={null} month={month} totalCards={total} totalLimit={0} totalUsed={0} page={page} pageSize={pagination.pageSize} />;
   const invoiceByCard = new Map(invoiceUse.map((item) => [item.cardId, Math.max(0, Number(item._sum.amount ?? 0) - Number(item._sum.paidAmount ?? 0))]));
   const invoicesByCard = new Map<string, typeof currentInvoices>();
   for (const invoice of currentInvoices) invoicesByCard.set(invoice.cardId, [...(invoicesByCard.get(invoice.cardId) ?? []), invoice]);
   const installmentCounts = new Map<string, number>();
-  for (const group of installmentGroups) {
-    if (!group.cardId) continue;
-    const current = monthsBetween(group.startMonth, month) + 1;
-    if (current >= 1 && current <= group.installmentCount) installmentCounts.set(group.cardId, (installmentCounts.get(group.cardId) ?? 0) + group._count._all);
-  }
+  for (const group of installmentGroups) if (group.cardId) installmentCounts.set(group.cardId, group._count._all);
   const cards = records.map((card) => {
     const invoices = invoicesByCard.get(card.id) ?? [];
     const currentInvoice = invoices.find((invoice) => invoice.month === month);

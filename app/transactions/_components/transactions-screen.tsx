@@ -69,6 +69,7 @@ export default function TransactionsScreen({ rows, metrics, pagination, canAdd, 
   const requestedCategory = searchParams.get("category");
   const category = TRANSACTION_CATEGORY_OPTIONS.some((item) => item.value === requestedCategory) ? requestedCategory! : "all";
   const [searchDraft, setSearchDraft] = useState(currentSearch);
+  const searchMatchesUrl = searchDraft.trim() === currentSearch;
   const navigate = useCallback((updates: Record<string, string | null>, push = true) => {
     const query = updatePaginationQuery(searchParams.toString(), updates);
     startTransition(() => {
@@ -79,7 +80,7 @@ export default function TransactionsScreen({ rows, metrics, pagination, canAdd, 
   }, [pathname, router, searchParams]);
   useEffect(() => setSearchDraft(currentSearch), [currentSearch]);
   useEffect(() => {
-    if (searchDraft === currentSearch) return;
+    if (searchDraft.trim() === currentSearch) return;
     const timer = window.setTimeout(() => navigate({ search: searchDraft.trim() || null, page: "1" }, false), 300);
     return () => window.clearTimeout(timer);
   }, [searchDraft, currentSearch, navigate]);
@@ -95,8 +96,8 @@ export default function TransactionsScreen({ rows, metrics, pagination, canAdd, 
           <Select value={period} onValueChange={(value) => navigate({ period: value === "month" ? null : value, page: "1" }, false)}><SelectTrigger aria-label="Período dentro do mês selecionado" className="h-11 min-w-0 sm:h-10"><SelectValue placeholder="Todo o mês" /></SelectTrigger><SelectContent>{periods.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select>
           <div className="min-w-0 sm:col-span-2 xl:col-span-1 xl:justify-self-end"><AddTransactionButton userCanAddTransaction={canAdd} canImportFiles={canImportFiles} /></div>
         </section>
-        <section aria-label="Lista de transações" aria-busy={isPending} className="min-w-0">
-          {isPending ? <p role="status" aria-live="polite" className="mb-2 text-sm text-muted-foreground">Atualizando resultados. Os filtros continuam aplicados.</p> : null}
+        <section aria-label="Lista de transações" aria-busy={isPending || !searchMatchesUrl} className="min-w-0">
+          {isPending || !searchMatchesUrl ? <p role="status" aria-live="polite" className="mb-2 text-sm text-muted-foreground">{isPending ? "Atualizando resultados. Os filtros continuam aplicados." : "Preparando a busca; os resultados atuais continuam visíveis."}</p> : null}
           <div className="hidden min-w-0 lg:block [&_table]:table-fixed [&_th]:h-10 [&_th]:px-2.5 [&_th]:text-xs [&_td]:px-2.5 [&_td]:py-2 [&_th:nth-child(1)]:w-[100px] [&_th:nth-child(3)]:w-[130px] [&_th:nth-child(4)]:w-[116px] [&_th:nth-child(5)]:w-[98px] [&_th:nth-child(6)]:w-[145px] [&_th:nth-child(7)]:w-[86px]">
             <DataTable columns={transactionColumns} data={rows} emptyMessage={emptyMessage} />
           </div>

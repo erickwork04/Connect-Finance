@@ -33,7 +33,7 @@ function PanelTitle({ icon, children }: { icon: ReactNode; children: ReactNode }
 }
 
 export function BalanceCard({ data, canAdd, canImportFiles = false }: { data: DashboardData; canAdd: boolean; canImportFiles?: boolean }) {
-  const pendingCount = data.commitments?.filter((item) => item.status === "PENDING" && !item.transactionId).length ?? 0;
+  const pendingCount = data.commitmentsSummary?.pendingCount ?? 0;
   return <section className={`${panel} relative h-full`} style={{ background: specialBackgrounds.balance, borderColor: "rgba(85, 176, 46, 0.25)" }}>
     <svg aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 hidden h-full w-[45%] sm:block" viewBox="0 0 360 180" preserveAspectRatio="none" fill="none">
       <path d="M0 150 C52 130 82 165 126 124 S190 84 230 96 S302 47 360 27" stroke="#70d94b" strokeOpacity="0.2" strokeWidth="1.5" />
@@ -129,7 +129,7 @@ export function MonthlyCommitmentsCard({ data }: { data: DashboardData }) {
       { label: "Pendentes", amount: data.commitmentsSummary?.pending ?? 0, color: "text-amber-300" },
     ].map((item) => <div key={item.label} className="min-w-0 rounded-xl border border-white/5 bg-white/[0.035] p-2.5"><p className="text-muted-foreground">{item.label}</p><p className={`mt-1 break-words font-semibold tabular-nums ${item.color}`}>{formatCurrency(item.amount)}</p></div>)}</div>
       <p className="mt-3 border-b border-white/10 pb-3 text-xs text-muted-foreground">Gastos fixos previstos no mês: <span className="font-semibold tabular-nums text-foreground">{formatCurrency(data.values.fixed)}</span></p>
-      {data.commitments.length === 0 ? <p className="mt-4 text-sm text-muted-foreground">Nenhum compromisso neste mês.</p> : <div className="mt-1 space-y-1">{data.commitments.slice(0, 2).map((item) => <div key={item.id} className="flex items-center justify-between gap-2 py-2 text-sm"><div className="min-w-0"><p className="truncate font-medium">{item.description}</p><p className="text-xs text-muted-foreground">Vence {new Date(item.dueDate).toLocaleDateString("pt-BR", { timeZone: "UTC", day: "2-digit", month: "short" })} · <span className={item.status === "PENDING" ? "text-amber-300" : "text-emerald-300"}>{item.status === "PENDING" ? "Pendente" : item.status === "CONFIRMED" ? "Confirmado" : "Pago"}</span></p></div><span className="shrink-0 whitespace-nowrap font-semibold tabular-nums">{formatCurrency(item.amount)}</span></div>)}</div>}</>}
+      {data.commitmentsSummary?.count === 0 ? <p className="mt-4 text-sm text-muted-foreground">Nenhum compromisso neste mês.</p> : <div className="mt-1 space-y-1">{data.commitments.map((item) => <div key={item.id} className="flex items-center justify-between gap-2 py-2 text-sm"><div className="min-w-0"><p className="truncate font-medium">{item.description}</p><p className="text-xs text-muted-foreground">Vence {new Date(item.dueDate).toLocaleDateString("pt-BR", { timeZone: "UTC", day: "2-digit", month: "short" })} · <span className={item.status === "PENDING" ? "text-amber-300" : "text-emerald-300"}>{item.status === "PENDING" ? "Pendente" : item.status === "CONFIRMED" ? "Confirmado" : "Pago"}</span></p></div><span className="shrink-0 whitespace-nowrap font-semibold tabular-nums">{formatCurrency(item.amount)}</span></div>)}</div>}</>}
   </section>;
 }
 

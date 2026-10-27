@@ -58,8 +58,22 @@ export default function RootLayout({
     <html lang="pt-BR" className="dark">
       <body className={`${mulish.className} dark min-h-screen bg-background text-foreground antialiased`}>
         <ClerkProvider
+          localization={{
+            userButton: {
+              action__openUserMenu: "Abrir menu da conta",
+              action__closeUserMenu: "Fechar menu da conta",
+              action__manageAccount: "Gerenciar conta",
+              action__signOut: "Sair da conta",
+              action__signOutAll: "Sair de todas as contas",
+              action__addAccount: "Adicionar conta",
+            },
+          }}
           appearance={{
             baseTheme: dark,
+            elements: {
+              userButtonTrigger:
+                "rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#171c23]",
+            },
           }}
         >
           <div className="flex min-h-screen flex-col">{children}</div>
