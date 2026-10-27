@@ -46,6 +46,7 @@ model Transaction {
 
   @@index([userId, importHash])
   @@index([userId, date, amount])
+  @@index([userId, date, createdAt, id])
   @@index([userId, importBatchId])
 }
 
@@ -65,6 +66,7 @@ model CreditCard {
   installments InstallmentPlan[]
 
   @@index([userId, isActive, isPrimary])
+  @@index([userId, isActive, isPrimary, createdAt])
 }
 
 model BankAccount {
@@ -96,6 +98,7 @@ model CardInvoice {
 
   @@unique([cardId, month])
   @@index([userId, month])
+  @@index([userId, status, cardId])
 }
 
 model InstallmentPlan {
@@ -115,6 +118,7 @@ model InstallmentPlan {
   commitments       MonthlyCommitment[]
 
   @@index([userId, startMonth, status])
+  @@index([userId, status, startMonth, createdAt])
 }
 
 model MonthlyCommitment {
@@ -138,6 +142,7 @@ model MonthlyCommitment {
   installmentPlan InstallmentPlan? @relation(fields: [installmentPlanId], references: [id], onDelete: Restrict)
 
   @@index([userId, dueDate, status])
+  @@index([userId, dueDate, createdAt])
   @@unique([recurrenceId, occurrenceMonth])
   @@unique([installmentPlanId, occurrenceMonth])
 }
@@ -194,6 +199,28 @@ model CaktoWebhookEvent {
   @@index([createdAt])
 }
 
+model BackgroundJob {
+  id             String              @id @default(uuid())
+  userId         String?
+  type           BackgroundJobType
+  status         BackgroundJobStatus @default(QUEUED)
+  idempotencyKey String              @unique
+  payload        Json
+  result         Json?
+  progress       Int                 @default(0)
+  attemptCount   Int                 @default(0)
+  availableAt    DateTime            @default(now())
+  leaseUntil     DateTime?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  lastErrorCode  String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([status, availableAt, createdAt])
+  @@index([userId, createdAt])
+}
+
 enum BillingSubscriptionStatus {
   CREATING
   PENDING
@@ -206,6 +233,18 @@ enum BillingSubscriptionStatus {
 enum BillingProvider {
   MERCADO_PAGO
   CAKTO
+}
+
+enum BackgroundJobType {
+  AI_REPORT
+  CAKTO_WEBHOOK
+}
+
+enum BackgroundJobStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
 }
 
 enum InvoiceStatus {

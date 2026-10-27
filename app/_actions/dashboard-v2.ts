@@ -7,6 +7,7 @@ import { z } from "zod";
 import { db } from "@/app/_lib/prisma";
 import { getYearMonthRangeUtc, monthlyDueDate, YEAR_MONTH_PATTERN } from "@/app/_lib/month-range";
 import { ensureCommitmentOccurrences } from "@/app/_lib/commitments";
+import { clampPage } from "@/app/_lib/pagination";
 import { getPlanPermissions } from "@/app/_lib/plan-permissions";
 import { canCreateWithinLimit } from "@/app/_lib/plan-rules";
 import { archiveOwnedCreditCard, updateOwnedCreditCard } from "@/app/_lib/card-management";
@@ -364,36 +365,53 @@ export type CommitmentManagerData = {
   canCreateCommitment: boolean;
   activeCommitmentCount: number;
   activeCommitmentLimit: number | null;
+  total: number;
+  page: number;
+  pageSize: number;
 };
 
-export async function getCommitmentsForMonth(selectedMonth: string): Promise<CommitmentManagerData | null> {
+export async function getCommitmentsForMonth(selectedMonth: string, page = 1, pageSize = 25): Promise<CommitmentManagerData | null> {
   if (!month.safeParse(selectedMonth).success) throw new Error("Mês inválido.");
+  const safePageSize = [10, 25, 50, 100].includes(pageSize) ? pageSize : 25;
+  const requestedPage = Number.isSafeInteger(page) && page > 0 ? page : 1;
   const owner = await userId();
   await ensureCommitmentOccurrences(owner, selectedMonth);
   const range = getYearMonthRangeUtc(selectedMonth);
   const permissions = await getPlanPermissions(owner);
   const currentMonth = new Date().toISOString().slice(0, 7);
-  const [commitments, expenses, activeCounts] = await Promise.all([
-    db.monthlyCommitment.findMany({ where: { userId: owner, dueDate: range, installmentPlanId: null, deletedAt: null }, include: { recurrence: { select: { endMonth: true } } }, orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }] }).catch((error: unknown) => {
+  const commitmentsWhere = { userId: owner, dueDate: range, installmentPlanId: null, deletedAt: null };
+  const total = await db.monthlyCommitment.count({ where: commitmentsWhere });
+  const safePage = clampPage(requestedPage, total, safePageSize);
+  const [commitments, activeCounts] = await Promise.all([
+    db.monthlyCommitment.findMany({ where: commitmentsWhere, select: { id: true, description: true, amount: true, dueDate: true, category: true, recurring: true, recurrenceId: true, status: true, transactionId: true, recurrence: { select: { endMonth: true } } }, orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }, { id: "asc" }], skip: (safePage - 1) * safePageSize, take: safePageSize }).catch((error: unknown) => {
       if (typeof error === "object" && error !== null && "code" in error && (error.code === "P2021" || error.code === "P2022")) return null;
       throw error;
     }),
-    db.transaction.findMany({ where: { userId: owner, date: range, type: "EXPENSE" }, orderBy: { date: "desc" }, select: { id: true, name: true, amount: true, commitment: { select: { id: true } } } }),
     Promise.all([
       db.monthlyCommitment.count({ where: { userId: owner, recurrenceId: null, installmentPlanId: null, deletedAt: null, status: { not: "PAID" } } }),
       db.recurringCommitment.count({ where: { userId: owner, OR: [{ endMonth: null }, { endMonth: { gte: currentMonth } }] } }),
     ]),
   ]);
   if (commitments === null) return null;
+  const matchingAmounts = [...new Set(commitments.map((item) => Number(item.amount)))];
+  const expenses = matchingAmounts.length ? await db.transaction.findMany({
+    where: { userId: owner, date: range, type: "EXPENSE", amount: { in: matchingAmounts }, commitment: { is: null } },
+    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+    select: { id: true, name: true, amount: true },
+    take: 200,
+  }) : [];
   return {
     commitments: commitments.map((item) => ({ id: item.id, description: item.description,
       amount: Number(item.amount), dueDate: item.dueDate.toISOString(), category: item.category,
       recurring: item.recurring, recurrenceId: item.recurrenceId, recurrenceEndMonth: item.recurrence?.endMonth ?? null,
       status: item.status, transactionId: item.transactionId })),
-    expenses: expenses.filter((item) => !item.commitment).map((item) => ({ id: item.id, name: item.name, amount: Number(item.amount) })),
+    expenses: expenses.map((item) => ({ id: item.id, name: item.name, amount: Number(item.amount) })),
     activeCommitmentCount: activeCounts[0] + activeCounts[1],
     activeCommitmentLimit: permissions.activeCommitmentLimit,
     canCreateCommitment: canCreateWithinLimit(activeCounts[0] + activeCounts[1], permissions.activeCommitmentLimit),
+    total,
+    page: safePage,
+    pageSize: safePageSize,
   };
 }
 

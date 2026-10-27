@@ -7,6 +7,8 @@ import { getPlanPermissions } from "@/app/_lib/plan-permissions";
 import CategoryExpensesCard from "./_componets/category-expenses-card";
 import { AiInsightCard, BalanceCard, CreditCardSummary, FinancialMetricCard, InstallmentsCard, LatestTransactionsCard, MonthlyCommitmentsCard } from "./_componets/dashboard-v2-cards";
 
+export const maxDuration = 60;
+
 interface DashboardPageProps {
   searchParams: Promise<{ month?: string | string[]; categoryPeriod?: string }>;
 }

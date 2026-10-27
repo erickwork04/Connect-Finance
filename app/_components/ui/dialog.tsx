@@ -3,6 +3,7 @@
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
+import ActionTooltip from "@/app/_components/action-tooltip";
 
 import { cn } from "@/app/_lib/utils";
 
@@ -31,8 +32,8 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { closeDisabled?: boolean }
+>(({ className, children, closeDisabled = false, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
@@ -44,10 +45,11 @@ const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-1 top-1 flex h-10 w-10 items-center justify-center rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground sm:right-2 sm:top-2 sm:h-8 sm:w-8">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Fechar</span>
-      </DialogPrimitive.Close>
+      <ActionTooltip content="Fechar janela">
+        <DialogPrimitive.Close disabled={closeDisabled} aria-label="Fechar janela" className="absolute right-1 top-1 flex h-10 w-10 items-center justify-center rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40 data-[state=open]:bg-accent data-[state=open]:text-muted-foreground sm:right-2 sm:top-2 sm:h-8 sm:w-8">
+          <X aria-hidden="true" className="h-4 w-4" />
+        </DialogPrimitive.Close>
+      </ActionTooltip>
     </DialogPrimitive.Content>
   </DialogPortal>
 ));

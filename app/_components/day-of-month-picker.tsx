@@ -13,7 +13,7 @@ export function DayOfMonthPicker({ value, onChange, name, label, disabled = fals
   return <>
     {name && <input type="hidden" name={name} value={isDayOfMonth(value) ? String(value) : ""} />}
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild><button type="button" disabled={disabled} aria-label={label} aria-haspopup="dialog" aria-expanded={open}
+      <PopoverTrigger asChild><button type="button" disabled={disabled} aria-label={isDayOfMonth(value) ? `${label}: dia ${value}` : `Selecionar ${label.toLocaleLowerCase("pt-BR")}`} title={`Selecionar ${label.toLocaleLowerCase("pt-BR")}`} aria-haspopup="dialog" aria-expanded={open}
         className={cn("flex h-11 w-full min-w-0 items-center justify-between rounded-lg border border-border bg-background px-3 text-left text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50", className)}>
         <span>{isDayOfMonth(value) ? `Dia ${value}` : "Selecione o dia"}</span><CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       </button></PopoverTrigger>

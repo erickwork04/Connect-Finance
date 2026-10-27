@@ -23,13 +23,17 @@ export const DatePicker = ({ value, onChange, disabled = false }: DatePickerProp
         <Button
           type="button"
           disabled={disabled}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          aria-label={value ? `Alterar data: ${new Date(value).toLocaleDateString("pt-BR")}` : "Selecionar data"}
+          title={value ? `Alterar data (${new Date(value).toLocaleDateString("pt-BR")})` : "Selecionar data"}
           variant={"outline"}
           className={cn(
             "min-h-11 w-full justify-start text-left font-normal sm:min-h-10",
             !value && "text-muted-foreground",
           )}
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />
+          <CalendarIcon aria-hidden="true" className="mr-2 h-4 w-4" />
           {value ? (
             new Date(value).toLocaleDateString("pt-BR", {
               day: "2-digit",

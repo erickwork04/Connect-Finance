@@ -53,13 +53,13 @@ export default async function HomePage() {
           </Link>
 
           <div className="hidden items-center gap-8 md:flex">
-            <Link href="#recursos" className="text-sm text-slate-300 transition hover:text-white">
+            <Link href="#recursos" className="rounded-sm text-sm text-slate-300 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55b02e]">
               Recursos
             </Link>
-            <Link href="#como-funciona" className="text-sm text-slate-300 transition hover:text-white">
+            <Link href="#como-funciona" className="rounded-sm text-sm text-slate-300 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55b02e]">
               Como funciona
             </Link>
-            <Link href="/login" className="text-sm text-slate-300 transition hover:text-white">
+            <Link href="/login" className="rounded-sm text-sm text-slate-300 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55b02e]">
               Entrar
             </Link>
           </div>
@@ -263,8 +263,8 @@ export default async function HomePage() {
         <div className="mx-auto flex max-w-7xl flex-col gap-5 px-5 py-7 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-8">
           <p>© 2026 Connect Finance. Todos os direitos reservados.</p>
           <div className="flex gap-6">
-            <Link href="/privacy" className="transition hover:text-white">Política de Privacidade</Link>
-            <Link href="/terms" className="transition hover:text-white">Termos de Uso</Link>
+            <Link href="/privacy" className="rounded-sm transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55b02e]">Política de Privacidade</Link>
+            <Link href="/terms" className="rounded-sm transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55b02e]">Termos de Uso</Link>
           </div>
         </div>
       </footer>

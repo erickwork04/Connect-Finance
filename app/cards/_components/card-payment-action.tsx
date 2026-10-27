@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { CircleDollarSign } from "lucide-react";
 import { payCardInvoice, type FinanceActionState } from "@/app/_actions/dashboard-v2";
@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/app/_components/ui/dialog";
 import { formatCurrency } from "@/app/_utils/currency";
+import { toast } from "sonner";
 
 const initialState: FinanceActionState = { message: "", success: false };
 const mask = "••••••";
@@ -40,15 +41,28 @@ export default function CardPaymentAction({
 }) {
   const [open, setOpen] = useState(false);
   const [payment, setPayment] = useState<number | undefined>(showLimits ? outstanding : undefined);
+  const [state, setState] = useState(initialState);
+  const [pending, setPending] = useState(false);
   const router = useRouter();
-  const [state, formAction, pending] = useActionState(async (_previous: FinanceActionState, formData: FormData) => {
-    const result = await payCardInvoice(_previous, formData);
-    if (result.success) {
-      setOpen(false);
-      router.refresh();
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (pending) return;
+    setState(initialState);
+    setPending(true);
+    try {
+      const result = await payCardInvoice(state, new FormData(event.currentTarget));
+      setState(result);
+      if (result.success) {
+        toast.success(result.message);
+        setOpen(false);
+        router.refresh();
+      }
+    } catch {
+      setState({ message: "Falha de conexão ao registrar o pagamento. O valor informado foi mantido; tente novamente.", success: false });
+    } finally {
+      setPending(false);
     }
-    return result;
-  }, initialState);
+  };
 
   const canPay = outstanding > 0;
   const availableAfterPayment = limitAvailable + (payment ?? 0);
@@ -62,27 +76,29 @@ export default function CardPaymentAction({
       <Button
         type="button"
         disabled={!canPay}
+        aria-haspopup="dialog"
         onClick={() => {
+          setState(initialState);
           setPayment(showLimits ? outstanding : undefined);
           setOpen(true);
         }}
-        title={canPay ? "Registrar um pagamento feito no banco" : "Não há saldo de fatura em aberto neste mês"}
+        title={canPay ? `Registra no Connect Finance um pagamento já feito no banco para ${cardName}` : "Não há saldo de fatura em aberto neste mês"}
         className="min-h-11 w-full border border-primary bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500"
       >
         <CircleDollarSign aria-hidden="true" className="h-4 w-4" />
-        {canPay ? "Pagar Fatura" : "Fatura em dia"}
+        {canPay ? "Registrar pagamento" : "Fatura em dia"}
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="w-[calc(100%-24px)] max-w-md border-white/10 bg-[#141816] p-4 sm:p-6">
+        <DialogContent closeDisabled={pending} className="w-[calc(100%-24px)] max-w-md border-white/10 bg-[#141816] p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>Pagar Fatura</DialogTitle>
+            <DialogTitle>Registrar pagamento da fatura</DialogTitle>
             <DialogDescription>
               Registre o pagamento que você já fez no banco para a fatura do cartão {cardName}.
             </DialogDescription>
           </DialogHeader>
 
-          <form action={formAction} className="space-y-4">
+          <form onSubmit={handleSubmit} aria-busy={pending} className="space-y-4">
             <input type="hidden" name="cardId" value={cardId} />
             <input type="hidden" name="month" value={month} />
 
@@ -125,13 +141,15 @@ export default function CardPaymentAction({
             </div>
 
             {showLimits ? (
-              <div className="grid grid-cols-3 gap-2" aria-label="Sugestões de pagamento">
+              <div role="group" aria-label="Preencher valor como parte da fatura em aberto" className="grid grid-cols-3 gap-2">
                 {[50, 75, 100].map((percentage) => (
                   <Button
                     key={percentage}
                     type="button"
                     variant="secondary"
                     disabled={pending}
+                    aria-label={`Preencher ${percentage}% da fatura em aberto`}
+                    title={`Preencher ${percentage}% do valor em aberto`}
                     onClick={() => changePayment(percentage / 100)}
                     className="min-h-10 bg-[#252c27] text-slate-100 hover:bg-[#2e3831]"
                   >
@@ -151,12 +169,13 @@ export default function CardPaymentAction({
               </p>
             ) : null}
 
+            {pending ? <p role="status" aria-live="polite" className="text-sm text-muted-foreground">Registrando pagamento desta fatura...</p> : null}
             <DialogFooter className="flex-row gap-2 sm:space-x-0">
               <Button type="button" variant="outline" disabled={pending} onClick={() => setOpen(false)} className="min-h-11 flex-1 border-white/15 bg-transparent text-slate-100 hover:bg-[#1c211e]">
                 Cancelar
               </Button>
               <Button type="submit" disabled={pending || !payment || payment <= 0 || payment > outstanding} className="min-h-11 flex-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
-                {pending ? "Salvando..." : "Confirmar Pagamento"}
+                {pending ? "Registrando pagamento..." : "Confirmar pagamento"}
               </Button>
             </DialogFooter>
           </form>

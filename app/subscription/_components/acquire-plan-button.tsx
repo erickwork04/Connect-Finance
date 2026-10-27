@@ -5,7 +5,7 @@ export default function AcquirePlanButton({ hasPremiumPlan }: { hasPremiumPlan: 
   if (hasPremiumPlan) {
     return (
       <div className="space-y-2">
-        <Button disabled type="button" className="h-11 w-full rounded-full">Gerenciar assinatura</Button>
+        <Button disabled type="button" title="O gerenciamento da assinatura ainda não está disponível" className="h-11 w-full rounded-full">Gerenciar assinatura (em breve)</Button>
         <p className="text-xs leading-5 text-muted-foreground">O gerenciamento online ainda não está disponível nesta aplicação.</p>
       </div>
     );

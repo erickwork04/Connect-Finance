@@ -42,6 +42,7 @@ export async function processImportFile(
   fileName: string,
   mode: ImportMode,
 ): Promise<ProcessFileResult> {
+  const startedAt = performance.now();
   const { userId } = await auth();
   if (!userId) {
     return {
@@ -78,6 +79,12 @@ export async function processImportFile(
       alreadyImportedCount: 0,
       errorMessage: "O arquivo selecionado está vazio.",
     };
+  }
+
+  const fileBytes = Buffer.byteLength(fileContent, "utf8");
+  if (fileBytes > 5 * 1024 * 1024) {
+    return { success: false, transactions: [], totalFound: 0, newCount: 0, possibleDuplicateCount: 0, alreadyImportedCount: 0,
+      errorMessage: "O arquivo excede o tamanho máximo permitido de 5MB." };
   }
 
   // Generate unique import batch identifier
@@ -126,6 +133,10 @@ export async function processImportFile(
       errorMessage: "Nenhuma transação financeira válida foi encontrada no arquivo.",
     };
   }
+  if (rawItems.length > 2_000) {
+    return { success: false, transactions: [], totalFound: 0, newCount: 0, possibleDuplicateCount: 0, alreadyImportedCount: 0,
+      errorMessage: "O arquivo contém mais de 2.000 transações. Divida-o em arquivos menores e tente novamente." };
+  }
 
   // Determine source
   let source: TransactionSource = TransactionSource.CSV;
@@ -171,6 +182,15 @@ export async function processImportFile(
         gte: minDate,
         lte: maxDate,
       },
+    },
+    select: {
+      id: true,
+      name: true,
+      amount: true,
+      date: true,
+      category: true,
+      paymentMethod: true,
+      type: true,
     },
   });
 
@@ -356,6 +376,8 @@ export async function processImportFile(
     });
   }
 
+  console.info(JSON.stringify({ event: "import_preview_processed", source, fileBytes, transactionCount: parsedTransactions.length,
+    durationMs: Math.round(performance.now() - startedAt) }));
   return {
     success: true,
     transactions: parsedTransactions,

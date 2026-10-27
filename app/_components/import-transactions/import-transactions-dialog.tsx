@@ -61,7 +61,11 @@ export function ImportTransactionsDialog({
   const [step, setStep] = useState<Step>("UPLOAD");
   const [isDragOver, setIsDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [processError, setProcessError] = useState("");
+  const [importError, setImportError] = useState("");
   const [transactions, setTransactions] = useState<ParsedTransaction[]>([]);
+  const [previewPage, setPreviewPage] = useState(1);
+  const previewPageSize = 25;
   const [activeFilter, setActiveFilter] = useState<
     "ALL" | "NEW" | "POSSIBLE_DUPLICATE" | "ALREADY_IMPORTED"
   >("ALL");
@@ -94,7 +98,10 @@ export function ImportTransactionsDialog({
       setSelectedFile(null);
       setTransactions([]);
       setImportSummary(null);
+      setProcessError("");
+      setImportError("");
       setActiveFilter("ALL");
+      setPreviewPage(1);
       setBatchId(null);
     }
     setIsOpen(open);
@@ -120,6 +127,7 @@ export function ImportTransactionsDialog({
     }
 
     setSelectedFile(file);
+    setProcessError("");
     setStep("PROCESSING");
 
     // Read file text
@@ -135,25 +143,30 @@ export function ImportTransactionsDialog({
           );
 
           if (!result.success) {
-            toast.error(result.errorMessage || "Erro ao processar arquivo.");
+            setProcessError(result.errorMessage || "Não foi possível processar o arquivo. Tente novamente.");
             setStep("UPLOAD");
             return;
           }
 
           setTransactions(result.transactions);
+          setPreviewPage(1);
           setBatchId(result.importBatchId || null);
           setStep("PREVIEW");
           toast.success("Extrato processado com sucesso.");
         } catch {
           console.error("Error processing file.");
-          toast.error("Ocorreu um erro ao processar o arquivo.");
+          setProcessError("Não foi possível processar o arquivo. Ele continua selecionado; tente novamente.");
           setStep("UPLOAD");
         }
       });
     };
 
     reader.onerror = () => {
-      toast.error("Erro ao ler o arquivo no navegador.");
+      setProcessError("Não foi possível ler o arquivo neste navegador. Selecione-o novamente ou tente outro arquivo.");
+      setStep("UPLOAD");
+    };
+    reader.onabort = () => {
+      setProcessError("A leitura do arquivo foi interrompida. Tente processá-lo novamente.");
       setStep("UPLOAD");
     };
 
@@ -211,15 +224,19 @@ export function ImportTransactionsDialog({
     if (activeFilter === "ALL") return transactions;
     return transactions.filter((t) => t.duplicateStatus === activeFilter);
   }, [transactions, activeFilter]);
+  const previewPageCount = Math.max(1, Math.ceil(filteredTransactions.length / previewPageSize));
+  const safePreviewPage = Math.min(previewPage, previewPageCount);
+  const firstPreviewIndex = filteredTransactions.length ? (safePreviewPage - 1) * previewPageSize : 0;
+  const visibleTransactions = filteredTransactions.slice(firstPreviewIndex, firstPreviewIndex + previewPageSize);
 
   // Master selection toggle for visible list
   const allVisibleSelected =
-    filteredTransactions.length > 0 &&
-    filteredTransactions.every((t) => t.selected);
+    visibleTransactions.length > 0 &&
+    visibleTransactions.every((t) => t.selected);
 
   const handleToggleSelectAll = () => {
     const nextState = !allVisibleSelected;
-    const visibleIds = new Set(filteredTransactions.map((t) => t.tempId));
+    const visibleIds = new Set(visibleTransactions.map((t) => t.tempId));
     setTransactions((prev) =>
       prev.map((t) =>
         visibleIds.has(t.tempId) ? { ...t, selected: nextState } : t,
@@ -229,6 +246,7 @@ export function ImportTransactionsDialog({
 
   // Finalize import action
   const handleConfirmImport = () => {
+    setImportError("");
     const toImport = transactions.filter((t) => t.selected);
     if (toImport.length === 0) {
       toast.warning("Selecione pelo menos uma transação para importar.");
@@ -246,6 +264,7 @@ export function ImportTransactionsDialog({
           invoiceMonth,
         );
         if (!result.success) {
+          setImportError(result.errorMessage || "Falha ao salvar. Revise e tente novamente.");
           toast.error(result.errorMessage || "Erro ao salvar transações.");
           return;
         }
@@ -260,6 +279,7 @@ export function ImportTransactionsDialog({
         toast.success(`${result.importedCount} transações importadas com sucesso!`);
       } catch {
         console.error("Error importing transactions.");
+        setImportError("Falha de conexão ao importar. Suas seleções foram mantidas; tente novamente.");
         toast.error("Erro inesperado ao importar transações.");
       }
     });
@@ -267,8 +287,10 @@ export function ImportTransactionsDialog({
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <Dialog open={isOpen} onOpenChange={(open) => { if (!open && (step === "PROCESSING" || isPending)) return; handleOpenChange(open); }}>
         <DialogContent
+          closeDisabled={step === "PROCESSING" || isPending}
+          aria-busy={step === "PROCESSING" || isPending}
           className={`bg-background border-border text-foreground transition-all duration-200 ${
             step === "PREVIEW"
               ? "max-w-4xl w-[96vw] sm:w-[92vw] h-[90vh] max-h-[90vh] flex flex-col p-4 sm:p-6"
@@ -346,6 +368,10 @@ export function ImportTransactionsDialog({
                 >
                   Selecionar arquivo
                 </Button>
+                {processError ? <div className="mt-3 w-full space-y-2" role="alert" aria-live="assertive">
+                  <p className="text-sm text-rose-300">{processError}</p>
+                  {selectedFile ? <Button type="button" variant="outline" onClick={() => void handleFileChange(selectedFile)} className="min-h-11" disabled={isPending}>Tentar processar {selectedFile.name} novamente</Button> : null}
+                </div> : null}
 
                 <div className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground">
                   <span>Formatos aceitos:</span>
@@ -399,9 +425,9 @@ export function ImportTransactionsDialog({
 
           {/* STEP 2: PROCESSING */}
           {step === "PROCESSING" && (
-            <div className="flex flex-col items-center justify-center py-12 text-center space-y-4">
+            <div role="status" aria-live="polite" aria-atomic="true" className="flex flex-col items-center justify-center py-12 text-center space-y-4">
               <div className="relative">
-                <div className="h-16 w-16 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+                <div aria-hidden="true" className="h-16 w-16 rounded-full border-4 border-primary/20 border-t-primary motion-safe:animate-spin motion-reduce:animate-none" />
                 <FileSpreadsheet className="absolute inset-0 m-auto h-6 w-6 text-primary" />
               </div>
               <div className="space-y-1">
@@ -468,8 +494,9 @@ export function ImportTransactionsDialog({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => setActiveFilter("ALL")}
-                      className={`h-7 px-2.5 text-xs rounded-full ${
+                      aria-pressed={activeFilter === "ALL"}
+                      onClick={() => { setActiveFilter("ALL"); setPreviewPage(1); }}
+                      className={`min-h-10 px-2.5 text-xs rounded-full ${
                         activeFilter === "ALL"
                           ? "bg-primary text-primary-foreground font-bold"
                           : "text-muted-foreground hover:text-foreground"
@@ -481,8 +508,9 @@ export function ImportTransactionsDialog({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => setActiveFilter("NEW")}
-                      className={`h-7 px-2.5 text-xs rounded-full ${
+                      aria-pressed={activeFilter === "NEW"}
+                      onClick={() => { setActiveFilter("NEW"); setPreviewPage(1); }}
+                      className={`min-h-10 px-2.5 text-xs rounded-full ${
                         activeFilter === "NEW"
                           ? "bg-primary text-primary-foreground font-bold"
                           : "text-muted-foreground hover:text-foreground"
@@ -495,8 +523,9 @@ export function ImportTransactionsDialog({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => setActiveFilter("POSSIBLE_DUPLICATE")}
-                        className={`h-7 px-2.5 text-xs rounded-full ${
+                        aria-pressed={activeFilter === "POSSIBLE_DUPLICATE"}
+                        onClick={() => { setActiveFilter("POSSIBLE_DUPLICATE"); setPreviewPage(1); }}
+                        className={`min-h-10 px-2.5 text-xs rounded-full ${
                           activeFilter === "POSSIBLE_DUPLICATE"
                             ? "bg-amber-500 text-black font-bold"
                             : "text-amber-400 hover:text-amber-300"
@@ -510,8 +539,9 @@ export function ImportTransactionsDialog({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => setActiveFilter("ALREADY_IMPORTED")}
-                        className={`h-7 px-2.5 text-xs rounded-full ${
+                        aria-pressed={activeFilter === "ALREADY_IMPORTED"}
+                        onClick={() => { setActiveFilter("ALREADY_IMPORTED"); setPreviewPage(1); }}
+                        className={`min-h-10 px-2.5 text-xs rounded-full ${
                           activeFilter === "ALREADY_IMPORTED"
                             ? "bg-muted text-foreground font-bold"
                             : "text-muted-foreground hover:text-foreground"
@@ -523,23 +553,20 @@ export function ImportTransactionsDialog({
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={handleToggleSelectAll}
-                      className="text-xs font-semibold text-primary hover:underline cursor-pointer flex items-center gap-1.5"
-                    >
+                    <label className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
                       <input
                         type="checkbox"
                         checked={allVisibleSelected}
                         onChange={handleToggleSelectAll}
-                        className="rounded border-border text-primary focus:ring-primary h-3.5 w-3.5 cursor-pointer"
+                        aria-label={allVisibleSelected ? "Desmarcar todas as transações visíveis" : "Marcar todas as transações visíveis"}
+                        className="h-4 w-4 cursor-pointer rounded border-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       />
                       <span>
                         {allVisibleSelected
                           ? "Desmarcar visíveis"
                           : "Marcar todas visíveis"}
                       </span>
-                    </button>
+                    </label>
                   </div>
                 </div>
               </div>
@@ -570,7 +597,7 @@ export function ImportTransactionsDialog({
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border/50">
-                          {filteredTransactions.map((t) => {
+                          {visibleTransactions.map((t) => {
                             const dateObj = new Date(t.date);
                             const isExpense = t.type === "EXPENSE";
 
@@ -586,7 +613,8 @@ export function ImportTransactionsDialog({
                                     type="checkbox"
                                     checked={t.selected}
                                     onChange={() => handleToggleSelect(t.tempId)}
-                                    className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                                    aria-label={`Selecionar ${t.name}, ${formatCurrency(t.amount)}`}
+                                    className="h-5 w-5 cursor-pointer rounded border-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                                   />
                                 </td>
                                 <td className="py-2.5 px-3 font-medium whitespace-nowrap">
@@ -642,7 +670,7 @@ export function ImportTransactionsDialog({
                                       )
                                     }
                                   >
-                                    <SelectTrigger className="h-8 text-xs bg-background/50 border-border">
+                                    <SelectTrigger aria-label={`Categoria de ${t.name}`} className="h-8 text-xs bg-background/50 border-border">
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent className="bg-popover border-border">
@@ -675,7 +703,9 @@ export function ImportTransactionsDialog({
                                         setComparisonTransaction(t);
                                         setComparisonModalOpen(true);
                                       }}
-                                      className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 hover:bg-amber-500/25 transition-colors cursor-pointer"
+                                      aria-label={`Comparar possível duplicata: ${t.name}`}
+                                      title={`Comparar possível duplicata: ${t.name}`}
+                                      className="inline-flex min-h-10 items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-400 transition-colors hover:bg-amber-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                                     >
                                       <AlertTriangle className="h-3 w-3 shrink-0" />
                                       Possível duplicada
@@ -689,7 +719,9 @@ export function ImportTransactionsDialog({
                                         setComparisonTransaction(t);
                                         setComparisonModalOpen(true);
                                       }}
-                                      className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-500/15 text-slate-400 border border-slate-500/30 hover:bg-slate-500/25 transition-colors cursor-pointer"
+                                      aria-label={`Comparar transação já importada: ${t.name}`}
+                                      title={`Comparar transação já importada: ${t.name}`}
+                                      className="inline-flex min-h-10 items-center gap-1 rounded-full border border-slate-500/30 bg-slate-500/15 px-2 py-0.5 text-[11px] font-semibold text-slate-400 transition-colors hover:bg-slate-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                                     >
                                       Já importada
                                     </button>
@@ -704,7 +736,7 @@ export function ImportTransactionsDialog({
 
                     {/* MOBILE CARD VIEW (visible on mobile, hidden on md+) */}
                     <div className="md:hidden space-y-2.5">
-                      {filteredTransactions.map((t) => {
+                      {visibleTransactions.map((t) => {
                         const dateObj = new Date(t.date);
                         const isExpense = t.type === "EXPENSE";
 
@@ -774,7 +806,7 @@ export function ImportTransactionsDialog({
                                     )
                                   }
                                 >
-                                  <SelectTrigger className="h-8 text-xs bg-background/80 border-border">
+                                  <SelectTrigger aria-label={`Categoria de ${t.name}`} className="h-11 text-xs bg-background/80 border-border">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent className="bg-popover border-border">
@@ -808,7 +840,9 @@ export function ImportTransactionsDialog({
                                       setComparisonTransaction(t);
                                       setComparisonModalOpen(true);
                                     }}
-                                    className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                                    aria-label={`Comparar possível duplicata: ${t.name}`}
+                                    title={`Comparar possível duplicata: ${t.name}`}
+                                    className="inline-flex min-h-10 items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-1 text-[11px] font-semibold text-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                                   >
                                     <AlertTriangle className="h-3 w-3" />
                                     Ver duplicada
@@ -822,7 +856,9 @@ export function ImportTransactionsDialog({
                                       setComparisonTransaction(t);
                                       setComparisonModalOpen(true);
                                     }}
-                                    className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full bg-slate-500/15 text-slate-400 border border-slate-500/30"
+                                    aria-label={`Comparar transação já importada: ${t.name}`}
+                                    title={`Comparar transação já importada: ${t.name}`}
+                                    className="inline-flex min-h-10 items-center gap-1 rounded-full border border-slate-500/30 bg-slate-500/15 px-2 py-1 text-[11px] font-semibold text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                                   >
                                     Já importada
                                   </button>
@@ -833,11 +869,16 @@ export function ImportTransactionsDialog({
                         );
                       })}
                     </div>
+                    {filteredTransactions.length > previewPageSize ? <nav aria-label="Paginação da prévia da importação" className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+                      <p aria-live="polite" className="text-xs text-muted-foreground">Mostrando {firstPreviewIndex + 1}–{Math.min(firstPreviewIndex + visibleTransactions.length, filteredTransactions.length)} de {filteredTransactions.length} transações deste filtro.</p>
+                      <div className="flex items-center gap-2"><Button type="button" variant="outline" className="min-h-10" aria-label="Página anterior da prévia" disabled={safePreviewPage <= 1} onClick={() => setPreviewPage((current) => Math.max(1, current - 1))}>Anterior</Button><span aria-current="page" className="text-xs tabular-nums text-muted-foreground">Página {safePreviewPage} de {previewPageCount}</span><Button type="button" variant="outline" className="min-h-10" aria-label="Próxima página da prévia" disabled={safePreviewPage >= previewPageCount} onClick={() => setPreviewPage((current) => Math.min(previewPageCount, current + 1))}>Próxima</Button></div>
+                    </nav> : null}
                   </>
                 )}
               </div>
 
               {/* Preview Footer */}
+              {importError ? <p role="alert" aria-live="assertive" className="w-full text-sm text-rose-300">{importError}</p> : null}
               <div className="pt-3 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
                 <div className="text-xs text-muted-foreground order-2 sm:order-1 text-center sm:text-left">
                   <span>
@@ -869,8 +910,8 @@ export function ImportTransactionsDialog({
                   >
                     {isPending ? (
                       <>
-                        <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                        Importando...
+                        <Loader2 aria-hidden="true" className="mr-1.5 h-4 w-4 motion-safe:animate-spin motion-reduce:animate-none" />
+                        Importando {selectedCount} transações...
                       </>
                     ) : (
                       `Importar selecionadas (${selectedCount})`

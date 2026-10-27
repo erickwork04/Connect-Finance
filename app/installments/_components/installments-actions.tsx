@@ -11,7 +11,7 @@ export default function InstallmentsActions({ cards, month }: { cards: { id: str
   const [open, setOpen] = useState(false);
   const router = useRouter();
   return <>
-    <Button type="button" onClick={() => setOpen(true)} className="min-h-11"><Plus aria-hidden="true" />Nova compra parcelada</Button>
+    <Button type="button" aria-haspopup="dialog" onClick={() => setOpen(true)} className="min-h-11"><Plus aria-hidden="true" />Nova compra parcelada</Button>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="w-[calc(100%-24px)] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader><DialogTitle>Nova compra parcelada</DialogTitle><DialogDescription>Cadastre a compra. As parcelas serão reservadas automaticamente no saldo dos meses correspondentes.</DialogDescription></DialogHeader>

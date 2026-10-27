@@ -18,8 +18,8 @@ export default function GoalsScreen({ goals }: GoalsScreenProps) {
         <PageHeader
           title="Metas"
           actions={
-            <Button disabled aria-describedby="goals-availability" className="h-11 w-full rounded-full sm:w-auto">
-              <Plus aria-hidden="true" /> Adicionar meta
+            <Button disabled title="O cadastro de metas ainda não está disponível" aria-describedby="goals-availability" className="h-11 w-full rounded-full sm:w-auto">
+              <Plus aria-hidden="true" /> Adicionar meta (em breve)
             </Button>
           }
         />

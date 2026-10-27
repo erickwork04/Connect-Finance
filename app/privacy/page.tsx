@@ -13,7 +13,7 @@ const PrivacyPage = () => {
                 <header className="mb-12 border-b border-zinc-800 pb-8">
                     <Link
                         href="/"
-                        className="mb-8 inline-flex items-center text-sm text-green-500 transition-colors hover:text-green-400"
+                        className="mb-8 inline-flex items-center rounded-sm text-sm text-green-500 transition-colors hover:text-green-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     >
                         ← Voltar para o Connect Finance
                     </Link>
@@ -250,11 +250,11 @@ const PrivacyPage = () => {
                     <p>© 2026 Connect Finance. Todos os direitos reservados.</p>
 
                     <div className="mt-3 flex gap-4">
-                        <Link href="/privacy" className="hover:text-green-500">
+                        <Link href="/privacy" className="rounded-sm hover:text-green-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                             Privacidade
                         </Link>
 
-                        <Link href="/terms" className="hover:text-green-500">
+                        <Link href="/terms" className="rounded-sm hover:text-green-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                             Termos de Uso
                         </Link>
                     </div>

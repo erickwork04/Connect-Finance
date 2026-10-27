@@ -12,12 +12,14 @@ import {
 } from "lucide-react";
 import FeatureEmptyState from "@/app/_components/feature-empty-state";
 import Navbar from "@/app/_components/navbar";
+import ActionTooltip from "@/app/_components/action-tooltip";
 import { Button } from "@/app/_components/ui/button";
 import PageHeader from "@/app/_components/page-header";
 import { creditLimit } from "@/app/_lib/finance";
 import { formatCurrency } from "@/app/_utils/currency";
 import CardOverview, { type CardView } from "./card-overview";
 import CardsActions from "./cards-actions";
+import PaginationControls from "@/app/_components/pagination-controls";
 
 interface InstallmentView {
   id: string;
@@ -62,18 +64,28 @@ export default function CardsScreen({
   cards,
   installments,
   month,
+  totalCards,
+  totalLimit,
+  totalUsed,
+  page,
+  pageSize,
   canCreateCard = true,
 }: {
   cards: CardView[] | null;
   installments: InstallmentView[] | null;
   month: string;
+  totalCards: number;
+  totalLimit: number;
+  totalUsed: number;
+  page: number;
+  pageSize: number;
   canCreateCard?: boolean;
 }) {
   const [showLimits, setShowLimits] = useState(true);
   const cardOptions = cards?.map(({ id, name }) => ({ id, name })) ?? [];
-  const limitTotal = cards?.reduce((sum, card) => sum + card.limitTotal, 0) ?? 0;
-  const limitUsed = cards?.reduce((sum, card) => sum + card.limitUsed, 0) ?? 0;
-  const totalLimit = creditLimit(limitTotal, limitUsed);
+  const limitTotal = totalLimit;
+  const limitUsed = totalUsed;
+  const totalAvailable = creditLimit(limitTotal, limitUsed);
   const masked = "••••••";
   const usagePercent = limitTotal > 0 ? (limitUsed / limitTotal) * 100 : 0;
   const summaryValue = (value: number) => cards === null
@@ -92,19 +104,22 @@ export default function CardsScreen({
             </p>
           </div>
           <div className="flex flex-col gap-2 min-[480px]:flex-row min-[480px]:items-center">
-            <button
-              type="button"
-              role="switch"
-              aria-checked={showLimits}
-              onClick={() => setShowLimits((visible) => !visible)}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-3 text-sm text-slate-300 transition hover:bg-[#1c211e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              <span className={`relative h-5 w-9 rounded-full transition-colors ${showLimits ? "bg-primary" : "bg-slate-600"}`}>
-                <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${showLimits ? "translate-x-[18px]" : "translate-x-0.5"}`} />
-              </span>
-              {showLimits ? <Eye aria-hidden="true" className="h-4 w-4" /> : <EyeOff aria-hidden="true" className="h-4 w-4" />}
-              Mostrar limites
-            </button>
+            <ActionTooltip content={showLimits ? "Ocultar valores e limites dos cartões" : "Mostrar valores e limites dos cartões"}>
+              <button
+                type="button"
+                role="switch"
+                aria-label={showLimits ? "Ocultar valores e limites dos cartões" : "Mostrar valores e limites dos cartões"}
+                aria-checked={showLimits}
+                onClick={() => setShowLimits((visible) => !visible)}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm text-slate-300 transition hover:bg-[#1c211e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <span className={`relative h-5 w-9 rounded-full transition-colors ${showLimits ? "bg-primary" : "bg-slate-600"}`}>
+                  <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${showLimits ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+                </span>
+                {showLimits ? <Eye aria-hidden="true" className="h-4 w-4" /> : <EyeOff aria-hidden="true" className="h-4 w-4" />}
+                {showLimits ? "Ocultar limites" : "Mostrar limites"}
+              </button>
+            </ActionTooltip>
             <CardsActions cards={cardOptions} month={month} canCreateCard={canCreateCard} />
           </div>
         </section>
@@ -112,7 +127,7 @@ export default function CardsScreen({
         <section aria-label="Resumo dos limites dos cartões" className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <SummaryCard title="Limite Total" value={summaryValue(limitTotal)} icon={CreditCard} tone="green" />
           <SummaryCard title="Total Usado" value={summaryValue(limitUsed)} icon={Activity} tone="red" />
-          <SummaryCard title="Limite Disponível" value={summaryValue(totalLimit.available)} icon={Wallet} tone="green" />
+          <SummaryCard title="Limite Disponível" value={summaryValue(totalAvailable.available)} icon={Wallet} tone="green" />
           <SummaryCard title="Uso Total" value={cards === null ? "Indisponível" : showLimits ? `${usagePercent.toFixed(1).replace(".", ",")}%` : masked} icon={Landmark} tone="green" />
         </section>
 
@@ -122,7 +137,7 @@ export default function CardsScreen({
             title="Cadastro de cartões indisponível"
             description="Os dados de cartões não estão disponíveis no momento. Tente novamente mais tarde."
           />
-        ) : cards.length === 0 ? (
+        ) : totalCards === 0 ? (
           <FeatureEmptyState
             icon={<CreditCard className="h-6 w-6" />}
             title="Nenhum cartão cadastrado"
@@ -135,12 +150,13 @@ export default function CardsScreen({
             ))}
           </section>
         )}
+        {cards !== null && totalCards > 0 ? <PaginationControls page={page} pageSize={pageSize} total={totalCards} noun="cartões" /> : null}
 
         <section className="rounded-2xl border border-white/10 bg-[#141816] p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="font-semibold text-white">Parcelas neste mês</h2>
-              <p className="mt-1 text-sm text-slate-400">Compromissos vinculados aos cartões no período selecionado.</p>
+              <p className="mt-1 text-sm text-slate-400">Prévia das compras parceladas ativas neste mês.</p>
             </div>
             <Button asChild variant="outline" className="border-white/15 bg-transparent text-slate-200 hover:bg-[#1c211e]">
               <Link href={`/installments?month=${month}`}>Ver compras parceladas</Link>

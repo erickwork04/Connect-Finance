@@ -1,3 +1,7 @@
+"use client";
+
+import { useState, type MouseEvent } from "react";
+import { useRouter } from "next/navigation";
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -10,46 +14,65 @@ import {
   AlertDialogTitle,
 } from "@/app/_components/ui/alert-dialog";
 import { Button } from "@/app/_components/ui/button";
+import ActionTooltip from "@/app/_components/action-tooltip";
 import { TrashIcon } from "lucide-react";
 import { deleteTransaction } from "../_actions/delete-transactions";
 import { toast } from "sonner";
 
 interface DeleteTransactionButtonProps {
   transactionId: string;
+  transactionName: string;
 }
 
 const DeleteTransactionButton = ({
   transactionId,
+  transactionName,
 }: DeleteTransactionButtonProps) => {
-  const handleConfirmDeleteClick = async () => {
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const router = useRouter();
+
+  const handleConfirmDeleteClick = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    if (pending) return;
+    setError("");
+    setPending(true);
     try {
       await deleteTransaction({ transactionId });
+      setOpen(false);
+      router.refresh();
       toast.success("Transação deletada com sucesso!");
     } catch {
+      setError("Falha ao excluir. A transação continua na lista; tente novamente.");
       console.error("Erro ao deletar transação.");
       toast.error("Ocorreu um erro ao deletar a transação");
+    } finally {
+      setPending(false);
     }
   };
   return (
-    <AlertDialog>
+    <AlertDialog open={open} onOpenChange={(nextOpen) => { if (!pending) { setOpen(nextOpen); if (nextOpen) setError(""); } }}>
       <AlertDialogTrigger asChild>
-        <Button aria-label="Excluir transação" variant="ghost" size="icon" className="h-11 w-11 text-muted-foreground hover:text-rose-400 sm:h-9 sm:w-9">
-          <TrashIcon />
-        </Button>
+        <ActionTooltip content={`Excluir transação ${transactionName}`}>
+          <Button aria-label={`Excluir transação ${transactionName}`} variant="ghost" size="icon" className="h-11 w-11 text-muted-foreground hover:text-rose-400 sm:h-9 sm:w-9">
+            <TrashIcon aria-hidden="true" />
+          </Button>
+        </ActionTooltip>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>
-            Você deseja realmente deletar essa transação?
-          </AlertDialogTitle>
+          <AlertDialogTitle>Excluir a transação “{transactionName}”?</AlertDialogTitle>
           <AlertDialogDescription>
             Essa ação não pode ser desfeita.
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {pending ? <p role="status" aria-live="polite" className="text-sm text-muted-foreground">Excluindo {transactionName}...</p> : null}
+        {error ? <p role="alert" aria-live="assertive" className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-300">{error}</p> : null}
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction onClick={handleConfirmDeleteClick}>
-            Continuar
+          <AlertDialogCancel disabled={pending}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction disabled={pending} aria-busy={pending} onClick={handleConfirmDeleteClick}>
+            Excluir transação
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

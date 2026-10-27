@@ -12,11 +12,14 @@ export type PlanPermissions = {
 
 export { permissionsForPlan } from "@/app/_lib/plan-rules";
 
-/** Clerk publicMetadata remains the sole authorization source for plan access. */
+/** Clerk public or private metadata can grant Premium; private metadata supports manual admin overrides. */
 export async function getPlanPermissions(userId?: string): Promise<PlanPermissions> {
   const resolvedUserId = userId ?? (await auth()).userId;
   if (!resolvedUserId) throw new Error("Unauthorized");
   const client = await clerkClient();
   const user = await client.users.getUser(resolvedUserId);
-  return permissionsForPlan(hasPremiumPlan(user.publicMetadata?.subscriptionPlan));
+  return permissionsForPlan(hasPremiumPlan(
+    user.privateMetadata?.subscriptionPlan,
+    user.publicMetadata?.subscriptionPlan,
+  ));
 }

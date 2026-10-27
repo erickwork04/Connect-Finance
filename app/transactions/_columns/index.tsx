@@ -47,7 +47,7 @@ export const transactionColumns: ColumnDef<TransactionRow>[] = [
     header: "Ações",
     cell: ({ row: { original } }) => <div className="flex items-center justify-end gap-1">
       <EditTransactionButton transaction={original} />
-      <DeleteTransactionButton transactionId={original.id} />
+      <DeleteTransactionButton transactionId={original.id} transactionName={original.name} />
     </div>,
   },
 ];

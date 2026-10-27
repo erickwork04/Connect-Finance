@@ -70,7 +70,7 @@ const AddTransactionButton = ({
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div>
+            <div tabIndex={userCanAddTransaction ? undefined : 0} role={userCanAddTransaction ? undefined : "group"} aria-label={userCanAddTransaction ? undefined : "Adicionar transação indisponível"} className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild disabled={!userCanAddTransaction}>
                   <Button
@@ -78,9 +78,9 @@ const AddTransactionButton = ({
                     className="w-full sm:w-auto h-11 sm:h-10 min-h-[44px] sm:min-h-0 rounded-full font-bold text-sm bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center gap-1.5 shadow-sm"
                     disabled={!userCanAddTransaction}
                   >
-                    <ArrowDownUpIcon className="h-4 w-4" />
+                    <ArrowDownUpIcon aria-hidden="true" className="h-4 w-4" />
                     <span>Adicionar transação</span>
-                    <ChevronDown className="h-4 w-4 opacity-75 ml-0.5" />
+                    <ChevronDown aria-hidden="true" className="h-4 w-4 opacity-75 ml-0.5" />
                   </Button>
                 </DropdownMenuTrigger>
 
@@ -97,7 +97,7 @@ const AddTransactionButton = ({
                     onClick={handleOpenManual}
                     className="flex items-center gap-2.5 py-2.5 px-2.5 cursor-pointer rounded-md hover:bg-accent focus:bg-accent text-xs sm:text-sm font-medium"
                   >
-                    <PlusCircle className="h-4 w-4 text-primary shrink-0" />
+                    <PlusCircle aria-hidden="true" className="h-4 w-4 text-primary shrink-0" />
                     <span>Adicionar manualmente</span>
                   </DropdownMenuItem>
 
@@ -108,11 +108,11 @@ const AddTransactionButton = ({
                     onClick={handleOpenBankStatement}
                     className="flex items-center gap-2.5 py-2.5 px-2.5 cursor-pointer rounded-md hover:bg-accent focus:bg-accent text-xs sm:text-sm font-medium"
                   >
-                    <Building2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                    <Building2 aria-hidden="true" className="h-4 w-4 text-emerald-400 shrink-0" />
                     <div className="flex flex-col">
                       <span>Importar extrato bancário</span>
                       <span className="text-[10px] text-muted-foreground">
-                        OFX ou CSV
+                        OFX ou CSV{!canImportFiles ? " · Premium" : ""}
                       </span>
                     </div>
                   </DropdownMenuItem>
@@ -122,11 +122,11 @@ const AddTransactionButton = ({
                     onClick={handleOpenCardInvoice}
                     className="flex items-center gap-2.5 py-2.5 px-2.5 cursor-pointer rounded-md hover:bg-accent focus:bg-accent text-xs sm:text-sm font-medium"
                   >
-                    <CreditCard className="h-4 w-4 text-blue-400 shrink-0" />
+                    <CreditCard aria-hidden="true" className="h-4 w-4 text-blue-400 shrink-0" />
                     <div className="flex flex-col">
                       <span>Importar fatura do cartão</span>
                       <span className="text-[10px] text-muted-foreground">
-                        CSV
+                        CSV{!canImportFiles ? " · Premium" : ""}
                       </span>
                     </div>
                   </DropdownMenuItem>

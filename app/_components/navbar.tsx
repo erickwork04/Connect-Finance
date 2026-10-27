@@ -117,7 +117,7 @@ export default function Navbar() {
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
-              aria-label="Abrir navegação"
+              aria-label="Abrir menu de navegação"
               aria-expanded={mobileMenuOpen}
               aria-controls="mobile-navigation"
               onClick={() => setMobileMenuOpen(true)}
@@ -156,6 +156,7 @@ export default function Navbar() {
           <div className="mt-auto border-t border-slate-800 pt-4">
             <button
               type="button"
+              aria-label="Fechar menu de navegação"
               onClick={() => setMobileMenuOpen(false)}
               className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm text-slate-400 hover:bg-[#18201b] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >

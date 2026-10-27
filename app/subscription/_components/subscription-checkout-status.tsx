@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Button } from "@/app/_components/ui/button";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -10,6 +11,7 @@ export default function SubscriptionCheckoutStatus({ id, status, paid }: { id: s
   const router = useRouter();
   const attempts = useRef(0);
   const notified = useRef("");
+  const [pollCount, setPollCount] = useState(0);
 
   useEffect(() => {
     const key = `${id}:${status}:${paid}`;
@@ -25,11 +27,16 @@ export default function SubscriptionCheckoutStatus({ id, status, paid }: { id: s
     if (!paid && status !== "FAILED" && status !== "CANCELLED" && attempts.current < 6) {
       const timer = window.setTimeout(() => {
         attempts.current += 1;
+        setPollCount(attempts.current);
         router.refresh();
       }, 5000);
       return () => window.clearTimeout(timer);
     }
-  }, [id, paid, router, status]);
+  }, [id, paid, pollCount, router, status]);
 
-  return null;
+  if (paid || status === "FAILED" || status === "CANCELLED") return null;
+  return <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3" role="status" aria-live="polite">
+    <p className="text-sm text-muted-foreground">Aguardando a confirmação da Cakto. Esta página verifica o status automaticamente.</p>
+    {pollCount >= 6 ? <Button type="button" variant="outline" onClick={() => { attempts.current = 0; setPollCount(0); router.refresh(); }} className="min-h-11">Verificar pagamento novamente</Button> : null}
+  </div>;
 }

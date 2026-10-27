@@ -1,7 +1,7 @@
 export const FREE_PLAN_LIMITS = { creditCards: 1, activeCommitments: 3 } as const;
 
-export function hasPremiumPlan(subscriptionPlan: unknown): boolean {
-  return subscriptionPlan === "premium";
+export function hasPremiumPlan(...subscriptionPlans: unknown[]): boolean {
+  return subscriptionPlans.some((subscriptionPlan) => subscriptionPlan === "premium");
 }
 
 export function canCreateWithinLimit(currentCount: number, limit: number | null): boolean {

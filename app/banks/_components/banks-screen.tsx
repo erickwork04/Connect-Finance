@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, Pencil, Plus, Trash2, Wallet } from "lucide-react";
+import ActionTooltip from "@/app/_components/action-tooltip";
 import { formatCurrency } from "@/app/_utils/currency";
 import { Button } from "@/app/_components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/app/_components/ui/dialog";
 import FeatureEmptyState from "@/app/_components/feature-empty-state";
 import { BankAccountArchiveForm, BankAccountEditForm, BankAccountForm } from "@/app/_components/finance-forms";
+import PaginationControls from "@/app/_components/pagination-controls";
 
 type Account = { id: string; name: string; institution: string; accountType: string; balance: number; color: string };
 const typeLabel: Record<string, string> = { CHECKING: "Conta corrente", SAVINGS: "Poupança", CASH: "Dinheiro", INVESTMENT: "Investimentos", OTHER: "Outra conta" };
@@ -19,8 +21,12 @@ function AccountActions({ account }: { account: Account }) {
   const done = () => { setMode(null); router.refresh(); };
   return <>
     <div className="flex gap-2">
-      <Button type="button" variant="outline" size="sm" onClick={() => setMode("edit")}><Pencil aria-hidden="true" className="h-4 w-4" />Editar</Button>
-      <Button type="button" variant="outline" size="icon" aria-label={`Remover ${account.name}`} title="Remover conta" onClick={() => setMode("archive")}><Trash2 aria-hidden="true" className="h-4 w-4 text-rose-400" /></Button>
+      <ActionTooltip content={`Editar conta ${account.name}`}>
+        <Button type="button" variant="outline" size="sm" aria-label={`Editar conta ${account.name}`} aria-haspopup="dialog" onClick={() => setMode("edit")}><Pencil aria-hidden="true" className="h-4 w-4" />Editar</Button>
+      </ActionTooltip>
+      <ActionTooltip content={`Arquivar conta ${account.name}`}>
+        <Button type="button" variant="outline" size="icon" aria-label={`Arquivar conta ${account.name}`} aria-haspopup="dialog" onClick={() => setMode("archive")}><Trash2 aria-hidden="true" className="h-4 w-4 text-rose-400" /></Button>
+      </ActionTooltip>
     </div>
     <Dialog open={mode !== null} onOpenChange={(open) => { if (!open) setMode(null); }}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
@@ -31,17 +37,16 @@ function AccountActions({ account }: { account: Account }) {
   </>;
 }
 
-export default function BanksScreen({ accounts }: { accounts: Account[] }) {
+export default function BanksScreen({ accounts, page, pageSize, total, totalBalance, largestBalance }: { accounts: Account[]; page: number; pageSize: number; total: number; totalBalance: number; largestBalance: number }) {
   const [createOpen, setCreateOpen] = useState(false);
   const router = useRouter();
-  const total = accounts.reduce((sum, account) => sum + account.balance, 0);
-  const largest = accounts.reduce<Account | null>((current, account) => !current || account.balance > current.balance ? account : current, null);
+  const largest = largestBalance;
   return <div className="space-y-5">
-    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><p className="text-sm text-muted-foreground">Gerencie suas contas bancárias e saldos.</p><Button type="button" onClick={() => setCreateOpen(true)} className="min-h-11"><Plus aria-hidden="true" />Adicionar banco</Button></div>
+    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><p className="text-sm text-muted-foreground">Gerencie suas contas bancárias e saldos.</p><Button type="button" aria-haspopup="dialog" onClick={() => setCreateOpen(true)} className="min-h-11"><Plus aria-hidden="true" />Adicionar conta bancária</Button></div>
     <section className="grid gap-3 md:grid-cols-3">
-      <div className="rounded-xl border border-border bg-[#141816] p-4"><p className="text-xs text-muted-foreground">Saldo total</p><p className="mt-1 text-2xl font-semibold tabular-nums text-emerald-400">{formatCurrency(total)}</p></div>
-      <div className="rounded-xl border border-border bg-[#141816] p-4"><p className="text-xs text-muted-foreground">Contas ativas</p><p className="mt-1 text-2xl font-semibold tabular-nums">{accounts.length}</p></div>
-      <div className="rounded-xl border border-border bg-[#141816] p-4"><p className="text-xs text-muted-foreground">Maior saldo</p><p className="mt-1 truncate text-2xl font-semibold tabular-nums text-primary">{largest ? formatCurrency(largest.balance) : formatCurrency(0)}</p></div>
+      <div className="rounded-xl border border-border bg-[#141816] p-4"><p className="text-xs text-muted-foreground">Saldo total</p><p className="mt-1 text-2xl font-semibold tabular-nums text-emerald-400">{formatCurrency(totalBalance)}</p></div>
+      <div className="rounded-xl border border-border bg-[#141816] p-4"><p className="text-xs text-muted-foreground">Contas ativas</p><p className="mt-1 text-2xl font-semibold tabular-nums">{total}</p></div>
+      <div className="rounded-xl border border-border bg-[#141816] p-4"><p className="text-xs text-muted-foreground">Maior saldo</p><p className="mt-1 truncate text-2xl font-semibold tabular-nums text-primary">{formatCurrency(largest)}</p></div>
     </section>
     {accounts.length === 0 ? <FeatureEmptyState icon={<Building2 className="h-6 w-6" />} title="Nenhuma conta cadastrada" description="Adicione sua conta corrente, poupança ou investimento para acompanhar o saldo total." /> : <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {accounts.map((account) => <article key={account.id} className="rounded-xl border border-border bg-[#141816] p-5">
@@ -50,6 +55,7 @@ export default function BanksScreen({ accounts }: { accounts: Account[] }) {
         <div className="mt-5 flex items-center justify-end border-t border-border pt-3"><AccountActions account={account} /></div>
       </article>)}
     </section>}
+    {total > 0 ? <PaginationControls page={page} pageSize={pageSize} total={total} noun="contas" /> : null}
     <Dialog open={createOpen} onOpenChange={setCreateOpen}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Adicionar conta bancária</DialogTitle><DialogDescription>Informe os dados da conta e o saldo atual.</DialogDescription></DialogHeader>

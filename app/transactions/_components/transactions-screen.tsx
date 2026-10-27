@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { PiggyBank, Search, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import AddTransactionButton from "@/app/_components/add-transaction-button";
 import { DataTable } from "@/app/_components/ui/data-table";
@@ -8,9 +9,11 @@ import { Input } from "@/app/_components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/_components/ui/select";
 import { TRANSACTION_CATEGORY_OPTIONS, TRANSACTION_PAYMENT_METHOD_LABELS } from "@/app/_constanst/transactions";
 import { monthlyBalance } from "@/app/_lib/finance";
+import { updatePaginationQuery } from "@/app/_lib/pagination";
+import PaginationControls from "@/app/_components/pagination-controls";
 import { formatCurrency } from "@/app/_utils/currency";
 import { transactionColumns } from "../_columns";
-import { computePeriodMetrics, filterTransactionRows, type LocalPeriod } from "../_lib/period-metrics";
+import type { LocalPeriod, PeriodMetrics } from "../_lib/period-metrics";
 import type { TransactionRow } from "../_lib/transaction-row";
 import DeleteTransactionButton from "./delete-transaction-button";
 import EditTransactionButton from "./edit-transaction-button";
@@ -50,35 +53,56 @@ function MobileTransactionCard({ transaction }: { transaction: TransactionRow })
     <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2"><TransactionCategoryLabel category={transaction.category} /><TransactionSourceBadge source={transaction.source} /></div>
     <div className="mt-3 flex min-w-0 items-center justify-between gap-2 border-t border-border pt-2">
       <div className="min-w-0"><p className="truncate text-xs text-muted-foreground" title={TRANSACTION_PAYMENT_METHOD_LABELS[transaction.paymentMethod]}>{TRANSACTION_PAYMENT_METHOD_LABELS[transaction.paymentMethod]}</p><div className="mt-1"><TransactionTypeBadge type={transaction.type} /></div></div>
-      <div className="flex shrink-0 items-center"><EditTransactionButton transaction={transaction} /><DeleteTransactionButton transactionId={transaction.id} /></div>
+      <div className="flex shrink-0 items-center"><EditTransactionButton transaction={transaction} /><DeleteTransactionButton transactionId={transaction.id} transactionName={transaction.name} /></div>
     </div>
   </article>;
 }
 
-export default function TransactionsScreen({ rows, month, canAdd, canImportFiles = false }: { rows: TransactionRow[]; month: string; canAdd: boolean; canImportFiles?: boolean }) {
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState<string>("all");
-  const [period, setPeriod] = useState<LocalPeriod>("month");
-  const filtered = useMemo(() => filterTransactionRows(rows, month, { search, category: category as TransactionRow["category"] | "all", period }), [rows, month, search, category, period]);
-  const metrics = useMemo(() => computePeriodMetrics(filtered), [filtered]);
-  const emptyMessage = rows.length ? "Nenhuma transação corresponde aos filtros." : "Nenhuma transação neste mês.";
+export default function TransactionsScreen({ rows, metrics, pagination, canAdd, canImportFiles = false }: { rows: TransactionRow[]; metrics: PeriodMetrics; pagination: { page: number; pageSize: number; total: number }; canAdd: boolean; canImportFiles?: boolean }) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const currentSearch = searchParams.get("search") ?? "";
+  const requestedPeriod = searchParams.get("period");
+  const period = requestedPeriod === "seven" || requestedPeriod === "fifteen" || requestedPeriod === "thirty" ? requestedPeriod : "month";
+  const requestedCategory = searchParams.get("category");
+  const category = TRANSACTION_CATEGORY_OPTIONS.some((item) => item.value === requestedCategory) ? requestedCategory! : "all";
+  const [searchDraft, setSearchDraft] = useState(currentSearch);
+  const navigate = useCallback((updates: Record<string, string | null>, push = true) => {
+    const query = updatePaginationQuery(searchParams.toString(), updates);
+    startTransition(() => {
+      const href = query ? `${pathname}?${query}` : pathname;
+      if (push) router.push(href, { scroll: false });
+      else router.replace(href, { scroll: false });
+    });
+  }, [pathname, router, searchParams]);
+  useEffect(() => setSearchDraft(currentSearch), [currentSearch]);
+  useEffect(() => {
+    if (searchDraft === currentSearch) return;
+    const timer = window.setTimeout(() => navigate({ search: searchDraft.trim() || null, page: "1" }, false), 300);
+    return () => window.clearTimeout(timer);
+  }, [searchDraft, currentSearch, navigate]);
+  const emptyMessage = pagination.total ? "Nenhuma transação nesta página corresponde aos filtros." : "Nenhuma transação corresponde aos filtros deste período.";
 
   return <div className="min-w-0">
     <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_310px] xl:gap-5 2xl:grid-cols-[minmax(0,1fr)_320px]">
       <div className="min-w-0 space-y-4">
         <SummaryCards revenue={metrics.revenue} expenses={metrics.expenses} invested={metrics.invested} />
         <section aria-label="Filtros de transações" className="grid min-w-0 grid-cols-1 items-center gap-2 rounded-xl border border-border bg-[#141816] p-3 sm:grid-cols-2 xl:grid-cols-[minmax(140px,1fr)_190px_165px_auto]">
-          <div className="relative min-w-0"><Search aria-hidden="true" className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground sm:top-3" /><Input aria-label="Buscar transações" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar transações..." className="h-11 min-w-0 pl-9 sm:h-10" /></div>
-          <Select value={category} onValueChange={setCategory}><SelectTrigger aria-label="Categoria" className="h-11 min-w-0 sm:h-10"><SelectValue placeholder="Todas as categorias" /></SelectTrigger><SelectContent><SelectItem value="all">Todas as categorias</SelectItem>{TRANSACTION_CATEGORY_OPTIONS.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select>
-          <Select value={period} onValueChange={(value) => setPeriod(value as LocalPeriod)}><SelectTrigger aria-label="Período dentro do mês selecionado" className="h-11 min-w-0 sm:h-10"><SelectValue placeholder="Todo o mês" /></SelectTrigger><SelectContent>{periods.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select>
+          <div className="relative min-w-0"><Search aria-hidden="true" className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground sm:top-3" /><Input aria-label="Buscar transações" value={searchDraft} onChange={(event) => setSearchDraft(event.target.value)} placeholder="Buscar transações..." className="h-11 min-w-0 pl-9 sm:h-10" /></div>
+          <Select value={category} onValueChange={(value) => navigate({ category: value === "all" ? null : value, page: "1" }, false)}><SelectTrigger aria-label="Categoria" className="h-11 min-w-0 sm:h-10"><SelectValue placeholder="Todas as categorias" /></SelectTrigger><SelectContent><SelectItem value="all">Todas as categorias</SelectItem>{TRANSACTION_CATEGORY_OPTIONS.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select>
+          <Select value={period} onValueChange={(value) => navigate({ period: value === "month" ? null : value, page: "1" }, false)}><SelectTrigger aria-label="Período dentro do mês selecionado" className="h-11 min-w-0 sm:h-10"><SelectValue placeholder="Todo o mês" /></SelectTrigger><SelectContent>{periods.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select>
           <div className="min-w-0 sm:col-span-2 xl:col-span-1 xl:justify-self-end"><AddTransactionButton userCanAddTransaction={canAdd} canImportFiles={canImportFiles} /></div>
         </section>
-        <section aria-label="Lista de transações" className="min-w-0">
+        <section aria-label="Lista de transações" aria-busy={isPending} className="min-w-0">
+          {isPending ? <p role="status" aria-live="polite" className="mb-2 text-sm text-muted-foreground">Atualizando resultados. Os filtros continuam aplicados.</p> : null}
           <div className="hidden min-w-0 lg:block [&_table]:table-fixed [&_th]:h-10 [&_th]:px-2.5 [&_th]:text-xs [&_td]:px-2.5 [&_td]:py-2 [&_th:nth-child(1)]:w-[100px] [&_th:nth-child(3)]:w-[130px] [&_th:nth-child(4)]:w-[116px] [&_th:nth-child(5)]:w-[98px] [&_th:nth-child(6)]:w-[145px] [&_th:nth-child(7)]:w-[86px]">
-            <DataTable columns={transactionColumns} data={filtered} emptyMessage={emptyMessage} />
+            <DataTable columns={transactionColumns} data={rows} emptyMessage={emptyMessage} />
           </div>
-          <div className="space-y-2 lg:hidden">{filtered.length ? filtered.map((transaction) => <MobileTransactionCard key={transaction.id} transaction={transaction} />) :
+          <div className="space-y-2 lg:hidden">{rows.length ? rows.map((transaction) => <MobileTransactionCard key={transaction.id} transaction={transaction} />) :
             <p className="rounded-xl border border-border bg-[#141816] p-6 text-center text-sm text-muted-foreground">{emptyMessage}</p>}</div>
+          <div className="mt-4"><PaginationControls page={pagination.page} pageSize={pagination.pageSize} total={pagination.total} noun="transações" /></div>
         </section>
       </div>
       <PeriodSidebar metrics={metrics} />

@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { getPlanPermissions } from "@/app/_lib/plan-permissions";
 import { TransactionSource } from "@prisma/client";
 import { monthlyDueDate, shiftYearMonth, YEAR_MONTH_PATTERN } from "@/app/_lib/month-range";
+import { persistImportBatch, type ImportBatchRow } from "./persist-import-batch";
 
 export async function confirmImportTransactions(
   transactionsToImport: ParsedTransaction[],
@@ -16,6 +17,7 @@ export async function confirmImportTransactions(
   source?: TransactionSource,
   invoiceMonth?: string,
 ): Promise<ConfirmImportResult> {
+  const startedAt = performance.now();
   const { userId } = await auth();
   if (!userId) {
     return {
@@ -35,6 +37,10 @@ export async function confirmImportTransactions(
       alreadyExistedCount: 0,
       errorMessage: "Nenhuma transação foi selecionada para importação.",
     };
+  }
+  if (transactionsToImport.length > 2_000) {
+    return { success: false, importedCount: 0, ignoredCount: 0, alreadyExistedCount: 0,
+      errorMessage: "A importação aceita até 2.000 transações por vez. Divida o arquivo e tente novamente." };
   }
 
   // Check subscription limits for free users
@@ -90,20 +96,7 @@ export async function confirmImportTransactions(
     ? invoiceMonth
     : undefined;
 
-  const toCreate: Array<{
-    name: string;
-    amount: number;
-    type: ParsedTransaction["type"];
-    category: ParsedTransaction["selectedCategory"];
-    paymentMethod: ParsedTransaction["paymentMethod"];
-    date: Date;
-    userId: string;
-    source: ParsedTransaction["source"];
-    externalId?: string | null;
-    importHash?: string | null;
-    importBatchId: string;
-    installmentInfo?: ParsedTransaction["installmentInfo"];
-  }> = [];
+  const toCreate: ImportBatchRow[] = [];
 
   let alreadyExistedCount = 0;
   let installmentsAdded = 0;
@@ -146,62 +139,23 @@ export async function confirmImportTransactions(
   }
 
   if (toCreate.length > 0) {
-    await db.$transaction(async (tx) => {
-      // Create batch record
-      await tx.importBatch.create({
-        data: {
-          id: finalBatchId,
-          userId,
-          fileName: batchFileName,
-          source: batchSource,
-          totalTransactions: toCreate.length,
-        },
-      });
-
-      // Keep regular rows batched; installment rows need a transaction id so the
-      // already billed installment can be recorded as paid without double-counting.
-      const regularRows = toCreate.filter((item) => !item.installmentInfo).map((item) => {
-        const row = { ...item };
-        delete row.installmentInfo;
-        return row;
-      });
-      if (regularRows.length) await tx.transaction.createMany({ data: regularRows });
-
-      for (const item of toCreate) {
-        if (!item.installmentInfo) continue;
-        const { installmentInfo, ...transactionData } = item;
-        const createdTransaction = await tx.transaction.create({ data: transactionData, select: { id: true } });
-        const existingPlan = item.importHash
-          ? await tx.installmentPlan.findUnique({ where: { sourceImportHash: item.importHash }, select: { id: true } })
-          : null;
-        if (existingPlan) continue;
-
-        const billedMonth = selectedInvoiceMonth ?? item.date.toISOString().slice(0, 7);
-        const plan = await tx.installmentPlan.create({ data: {
-          userId,
-          description: installmentInfo.description,
-          totalAmount: Math.round(item.amount * installmentInfo.total * 100) / 100,
-          installmentAmount: item.amount,
-          installmentCount: installmentInfo.total,
-          startMonth: shiftYearMonth(billedMonth, 1 - installmentInfo.current),
-          sourceImportHash: item.importHash,
-          status: "ACTIVE",
-        }, select: { id: true } });
-        installmentsAdded++;
-
-        await tx.monthlyCommitment.create({ data: {
-          userId,
-          installmentPlanId: plan.id,
-          occurrenceMonth: billedMonth,
-          description: `${installmentInfo.description} · parcela ${installmentInfo.current}/${installmentInfo.total}`,
-          amount: item.amount,
-          dueDate: monthlyDueDate(billedMonth, 1),
-          category: item.category,
-          status: "PAID",
-          transactionId: createdTransaction.id,
-        } });
-      }
-    });
+    try {
+      const persisted = await db.$transaction((tx) => persistImportBatch(tx, {
+        userId,
+        batchId: finalBatchId,
+        fileName: batchFileName,
+        source: batchSource,
+        rows: toCreate,
+        invoiceMonth: selectedInvoiceMonth,
+        shiftYearMonth,
+        monthlyDueDate,
+      }));
+      installmentsAdded = persisted.installmentsAdded;
+    } catch (error) {
+      const code = typeof error === "object" && error !== null && "code" in error && typeof error.code === "string" ? error.code : "unknown";
+      console.error(JSON.stringify({ event: "import_persist_failed", code, rowCount: toCreate.length, durationMs: Math.round(performance.now() - startedAt) }));
+      throw error;
+    }
   }
 
   const importedCount = toCreate.length;
@@ -212,6 +166,8 @@ export async function confirmImportTransactions(
   revalidatePath("/transactions");
   revalidatePath("/cards");
   revalidatePath("/installments");
+  console.info(JSON.stringify({ event: "import_persist_succeeded", rowCount: importedCount, installmentCount: installmentsAdded,
+    duplicateCount: alreadyExistedCount, durationMs: Math.round(performance.now() - startedAt) }));
 
   return {
     success: true,

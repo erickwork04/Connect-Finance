@@ -36,7 +36,7 @@ export default async function SubscriptionPage({ searchParams }: { searchParams:
       : Promise.resolve(null),
   ]);
   const user = await client.users.getUser(userId);
-  const hasPremiumPlan = user.publicMetadata?.subscriptionPlan === "premium";
+  const hasPremiumPlan = user.privateMetadata?.subscriptionPlan === "premium" || user.publicMetadata?.subscriptionPlan === "premium";
 
   return (
     <SubscriptionScreen

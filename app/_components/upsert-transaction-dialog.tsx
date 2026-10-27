@@ -88,6 +88,7 @@ const UpsertTransactionDialog = ({
   setIsOpen,
 }: UpsertTransactionDialogProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: defaultValues ?? {
@@ -111,12 +112,14 @@ const UpsertTransactionDialog = ({
 
   const onSubmit = async (data: FormSchema) => {
     try {
+      setSubmitError("");
       setIsSubmitting(true);
       await upsertTransaction({ ...data, id: transactionId });
       toast.success("Transação salva com sucesso!");
       setIsOpen(false);
       form.reset();
     } catch {
+      setSubmitError("Não foi possível salvar a transação. Os dados continuam preenchidos; tente novamente.");
       console.error("Erro ao salvar transação.");
       toast.error("Ocorreu um erro ao salvar a transação.");
     } finally {
@@ -130,6 +133,7 @@ const UpsertTransactionDialog = ({
     <Dialog
       open={IsOpen}
       onOpenChange={(open) => {
+        if (!open && isSubmitting) return;
         setIsOpen(open);
         if (!open) {
           form.reset();
@@ -137,7 +141,7 @@ const UpsertTransactionDialog = ({
       }}
     >
       <DialogTrigger asChild></DialogTrigger>
-      <DialogContent>
+      <DialogContent closeDisabled={isSubmitting}>
         <DialogHeader>
           <DialogTitle>
             {" "}
@@ -147,7 +151,8 @@ const UpsertTransactionDialog = ({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} aria-busy={isSubmitting} className="space-y-4 sm:space-y-6">
+            {submitError ? <p role="alert" aria-live="assertive" className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-300">{submitError}</p> : null}
             <FormField
               control={form.control}
               name="name"
@@ -195,7 +200,7 @@ const UpsertTransactionDialog = ({
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a verified email to display" />
+                        <SelectValue placeholder="Selecione o tipo da transação..." />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -281,15 +286,15 @@ const UpsertTransactionDialog = ({
 
             <DialogFooter className="flex-col-reverse sm:flex-row gap-2 sm:gap-0 pt-2">
               <DialogClose asChild>
-                <Button type="button" variant="outline" className="min-h-[44px]">
+                <Button type="button" variant="outline" disabled={isSubmitting} className="min-h-[44px]">
                   Cancelar
                 </Button>
               </DialogClose>
-              <Button type="submit" disabled={isSubmitting} className="min-h-[44px]">
+              <Button type="submit" disabled={isSubmitting} aria-busy={isSubmitting} className="min-h-[44px]">
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Salvando...
+                    <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 motion-safe:animate-spin motion-reduce:animate-none" />
+                    Salvando transação...
                   </>
                 ) : isUpdate ? (
                   "Atualizar"
@@ -297,6 +302,7 @@ const UpsertTransactionDialog = ({
                   "Adicionar"
                 )}
               </Button>
+              <span role="status" aria-live="polite" className="sr-only">{isSubmitting ? "Salvando transação. Aguarde." : ""}</span>
             </DialogFooter>
           </form>
         </Form>

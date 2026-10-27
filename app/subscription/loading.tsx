@@ -1,8 +1,11 @@
 import { Card, CardContent } from "@/app/_components/ui/card";
+import Navbar from "@/app/_components/navbar";
 
 export default function SubscriptionLoading() {
   return (
-    <main className="mx-auto w-full max-w-7xl space-y-5 p-4 sm:space-y-6 sm:p-6" aria-busy="true" aria-label="Carregando assinatura">
+    <>
+    <Navbar />
+    <main className="app-shell-content mx-auto w-full max-w-7xl space-y-5 p-4 sm:space-y-6 sm:p-6" aria-busy="true" aria-label="Carregando assinatura">
       <div className="h-8 w-44 rounded bg-muted motion-safe:animate-pulse" />
       <div className="h-5 w-full max-w-md rounded bg-muted motion-safe:animate-pulse" />
       <Card className="border-border bg-zinc-950/70"><CardContent className="space-y-5 p-5 sm:p-7">
@@ -18,5 +21,6 @@ export default function SubscriptionLoading() {
         </CardContent></Card>)}
       </div>
     </main>
+    </>
   );
 }

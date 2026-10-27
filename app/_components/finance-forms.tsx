@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, type ReactNode } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { format } from "date-fns";
 import { archiveBankAccount, confirmCommitment, createBankAccount, createCard, createCommitment, createInstallment, deleteCard, linkCommitment, saveInvoice, updateBankAccount, updateCard, updateCommitment, type CommitmentManagerData, type FinanceActionState } from "@/app/_actions/dashboard-v2";
 import { TRANSACTION_CATEGORY_OPTIONS } from "@/app/_constanst/transactions";
@@ -10,6 +10,8 @@ import { CurrencyInput } from "./money-input";
 import { DayOfMonthPicker } from "./day-of-month-picker";
 import { formatCurrency } from "@/app/_utils/currency";
 import PremiumUpgradeDialog from "@/app/_components/premium-upgrade-dialog";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 const field = "min-w-0 h-11 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary [color-scheme:dark]";
 const label = "grid min-w-0 gap-1.5 text-xs text-muted-foreground";
@@ -18,18 +20,34 @@ type Action = (state: FinanceActionState, formData: FormData) => Promise<Finance
 
 function ActionForm({ action, children, submit, onSuccess, submitClassName }: { action: Action; children: ReactNode; submit: string; onSuccess?: () => void; submitClassName?: string }) {
   const [limitMessage, setLimitMessage] = useState("");
-  const [state, formAction, pending] = useActionState(async (previous: FinanceActionState, formData: FormData) => {
-    const result = await action(previous, formData);
-    if (result.success) onSuccess?.();
-    if (result.code === "PLAN_LIMIT") setLimitMessage(result.message);
-    return result;
-  }, initial);
-  return <form action={formAction} className="grid min-w-0 gap-3 sm:grid-cols-2">
-    {children}
-    <div className="sm:col-span-2 flex flex-wrap items-center gap-3"><button type="submit" disabled={pending} className={`min-h-11 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60 ${submitClassName ?? ""}`}>{pending ? "Salvando..." : submit}</button>{state.message && <p role="status" className={`text-xs ${state.success ? "text-emerald-400" : "text-rose-400"}`}>{state.message}</p>}</div>
+  const [state, setState] = useState(initial);
+  const [pending, setPending] = useState(false);
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (pending) return;
+    setState(initial);
+    setPending(true);
+    try {
+      const result = await action(state, new FormData(event.currentTarget));
+      setState(result);
+      if (result.success) {
+        toast.success(result.message);
+        onSuccess?.();
+      }
+      if (result.code === "PLAN_LIMIT") setLimitMessage(result.message);
+    } catch {
+      setState({ message: "Não foi possível concluir agora. Seus dados continuam no formulário; tente novamente.", success: false });
+    } finally {
+      setPending(false);
+    }
+  };
+  return <form onSubmit={handleSubmit} aria-busy={pending} className="grid min-w-0 gap-3 sm:grid-cols-2">
+    <fieldset disabled={pending} className="contents">{children}</fieldset>
+    <div className="sm:col-span-2 flex flex-wrap items-center gap-3"><button type="submit" disabled={pending} className={`inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${submitClassName ?? ""}`}>{pending ? <Loader2 aria-hidden="true" className="h-4 w-4 motion-safe:animate-spin motion-reduce:animate-none" /> : null}{submit}</button>{pending ? <p role="status" aria-live="polite" className="text-xs text-muted-foreground">Salvando: {submit.toLocaleLowerCase("pt-BR")}.</p> : state.message ? <p role={state.success ? "status" : "alert"} aria-live={state.success ? "polite" : "assertive"} className={`text-xs ${state.success ? "text-emerald-400" : "text-rose-400"}`}>{state.message}</p> : null}</div>
     <PremiumUpgradeDialog open={Boolean(limitMessage)} onOpenChange={(open) => { if (!open) setLimitMessage(""); }} title="Limite do plano gratuito atingido" description={limitMessage} />
   </form>;
 }
+
 
 function DateFormField({ name, initialDate, disabled = false }: { name: string; initialDate: string; disabled?: boolean }) {
   const [date, setDate] = useState<Date | undefined>(() => new Date(`${initialDate}T12:00:00`));
@@ -71,7 +89,7 @@ export function CardEditForm({ card, onSuccess }: { card: { id: string; name: st
 }
 
 export function CardDeleteForm({ cardId, onSuccess }: { cardId: string; onSuccess?: () => void }) {
-  return <ActionForm action={deleteCard} submit="Remover cartão" onSuccess={onSuccess}>
+  return <ActionForm action={deleteCard} submit="Arquivar cartão" onSuccess={onSuccess}>
     <input type="hidden" name="cardId" value={cardId} />
     <p className="text-sm text-muted-foreground sm:col-span-2">O cartão será arquivado. Faturas, parcelas e demais registros financeiros vinculados serão preservados.</p>
   </ActionForm>;
@@ -119,7 +137,8 @@ export function InvoiceForm({ cards, month, onSuccess }: { cards: { id: string; 
     <label className={label}>Cartão<select name="cardId" required className={field}>{cards.map((card) => <option key={card.id} value={card.id}>{card.name}</option>)}</select></label>
     <div className={label}><span>Mês da fatura</span><MonthPicker name="month" value={invoiceMonth} onChange={setInvoiceMonth} label="Mês da fatura" className="w-full" /></div>
     <MoneyFormField name="amount" title="Valor da fatura" />
-    <label className={label}>Status<select name="status" className={field}><option value="OPEN">Aberta</option><option value="PAID">Paga</option></select></label>
+    <label className={label}>Status da fatura<select name="status" aria-describedby="invoice-status-help" className={field}><option value="OPEN">Em aberto</option><option value="PAID">Quitada integralmente</option></select></label>
+    <p id="invoice-status-help" className="text-xs leading-5 text-muted-foreground sm:col-span-2">Marque “Quitada integralmente” somente se o valor total já foi pago. Para registrar pagamentos parciais, use “Registrar pagamento” no cartão.</p>
   </ActionForm>;
 }
 
@@ -164,7 +183,7 @@ export function CommitmentLinkForm({ commitmentId, transactions, onSuccess }: { 
 }
 
 export function ConfirmCommitmentForm({ commitmentId, onSuccess }: { commitmentId: string; onSuccess?: () => void }) {
-  return <ActionForm action={confirmCommitment} submit="Confirmar compromisso" onSuccess={onSuccess}><input type="hidden" name="commitmentId" value={commitmentId} /></ActionForm>;
+  return <ActionForm action={confirmCommitment} submit="Marcar como confirmado" onSuccess={onSuccess}><input type="hidden" name="commitmentId" value={commitmentId} /></ActionForm>;
 }
 
 export function CommitmentEditForm({ commitment, onSuccess }: { commitment: CommitmentManagerData["commitments"][number]; onSuccess?: () => void }) {

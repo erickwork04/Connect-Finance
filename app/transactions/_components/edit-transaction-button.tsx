@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/app/_components/ui/button";
+import ActionTooltip from "@/app/_components/action-tooltip";
 import UpsertTransactionDialog from "@/app/_components/upsert-transaction-dialog";
 import { PencilIcon } from "lucide-react";
 import { useState } from "react";
@@ -15,15 +16,17 @@ const EditTransactionButton = ({ transaction }: EditTransactionButtonProps) => {
 
   return (
     <>
-      <Button
-        aria-label={`Editar ${transaction.name}`}
-        variant="ghost"
-        size="icon"
-        className="h-11 w-11 text-muted-foreground hover:text-foreground sm:h-9 sm:w-9"
-        onClick={() => setDialogIsOpen(true)}
-      >
-        <PencilIcon />
-      </Button>
+      <ActionTooltip content={`Editar transação ${transaction.name}`}>
+        <Button
+          aria-label={`Editar transação ${transaction.name}`}
+          variant="ghost"
+          size="icon"
+          className="h-11 w-11 text-muted-foreground hover:text-foreground sm:h-9 sm:w-9"
+          onClick={() => setDialogIsOpen(true)}
+        >
+          <PencilIcon aria-hidden="true" />
+        </Button>
+      </ActionTooltip>
       <UpsertTransactionDialog
         IsOpen={dialogIsOpen}
         setIsOpen={setDialogIsOpen}

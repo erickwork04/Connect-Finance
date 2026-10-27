@@ -28,7 +28,9 @@ export async function createCaktoCheckout(): Promise<CheckoutResult> {
   const { userId } = await auth();
   if (!userId) return { ok: false, code: "payment" };
   const user = await currentUser();
-  if (!user || user.publicMetadata.subscriptionPlan === "premium") return { ok: false, code: "pending" };
+  if (!user || user.privateMetadata.subscriptionPlan === "premium" || user.publicMetadata.subscriptionPlan === "premium") {
+    return { ok: false, code: "pending" };
+  }
 
   const baseUrl = configuredCheckoutUrl();
   if (!baseUrl) return { ok: false, code: "configuration" };
